@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kiteuzi cha Picha - Google Picker</title>
+  <!-- Google Fonts & Tailwind CSS CDN -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0f172a;
+      background-image: radial-gradient(circle at 50% -20%, #1e293b, #0f172a);
+    }
+  </style>
+</head>
+<body class="font-sans text-slate-100 min-h-screen flex flex-col justify-between antialiased">
+
+  <!-- Main Container -->
+  <div class="flex-grow flex items-center justify-center p-4 md:p-8">
+    <div class="w-full max-w-3xl bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-[2.5rem] shadow-2xl overflow-hidden">
+      
+      <!-- Premium Header Banner -->
+      <div class="bg-gradient-to-r from-cyan-900 via-slate-900 to-emerald-950 p-6 md:p-8 relative border-b border-slate-800">
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(6,182,212,0.15),transparent)] pointer-events-none"></div>
+        
+        <div class="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 text-[10px] font-black uppercase tracking-widest border border-cyan-500/20 mb-3">
+              <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+              Google Workspace API
+            </span>
+            <h1 class="text-2xl md:text-3xl font-black text-white tracking-tight uppercase">Kiteuzi cha Picha</h1>
+            <p class="text-xs text-slate-400 mt-1 max-w-lg font-medium">
+              Chagua au pakia picha salama kutoka akaunti yako ya Google Drive kwa kutumia Google Picker API ya kitaalamu.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="authorize_button" onclick="handleAuthClick()" class="hidden px-5 py-2.5 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12.24 10.285V13.4h6.86c-.277 1.56-1.602 4.585-6.86 4.585-4.54 0-8.24-3.765-8.24-8.4s3.7-8.4 8.24-8.4c2.58 0 4.307 1.095 5.298 2.045l2.465-2.37C18.435 1.21 15.62 0 12.24 0 5.58 0 0 5.37 0 12s5.58 12 12.24 12c6.96 0 11.57-4.89 11.57-11.79 0-.795-.085-1.4-.195-1.925H12.24z"/>
+              </svg>
+              <span>Authorize Account</span>
+            </button>
+            
+            <button id="signout_button" onclick="handleSignoutClick()" class="hidden px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center gap-1.5">
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Status and Preview Area -->
+      <div class="p-6 md:p-8 space-y-6">
+        
+        <!-- API Loading Indicator -->
+        <div id="loading_overlay" class="flex flex-col items-center justify-center py-12 space-y-3">
+          <div class="w-10 h-10 border-4 border-cyan-500/25 border-t-cyan-400 rounded-full animate-spin"></div>
+          <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Kupakia Google API SDKs...</p>
+        </div>
+
+        <!-- Connection Notice (Shown when unauthorized) -->
+        <div id="unauthorized_notice" class="hidden text-center py-10 px-4 space-y-4">
+          <div class="w-16 h-16 bg-slate-800/80 rounded-3xl flex items-center justify-center mx-auto border border-slate-700/50">
+            <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+            </svg>
+          </div>
+          <div class="space-y-1">
+            <h3 class="font-extrabold text-white text-base">Akaunti Haijaunganishwa</h3>
+            <p class="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+              Tafadhali bofya kitufe cha <strong class="text-cyan-400">Authorize Account</strong> kilichopo juu ili kuruhusu ufikiaji salama wa faili zako za picha kutoka Google Drive.
+            </p>
+          </div>
+        </div>
+
+        <!-- Success Panel with Action Options (Shown when authorized) -->
+        <div id="authorized_panel" class="hidden space-y-6 animate-fade-in">
+          <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="space-y-1 text-center md:text-left">
+              <h3 class="font-extrabold text-white text-sm">Akaunti Imeunganishwa Kikamilifu</h3>
+              <p class="text-xs text-slate-400">Sasa uko huru kuchagua au kupakia picha mpya moja kwa moja.</p>
+            </div>
+            
+            <button onclick="createPicker()" class="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-950/20 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+              <span>Fungua Kiteuzi (Google Picker)</span>
+            </button>
+          </div>
+
+          <!-- Preview & Details Area -->
+          <div class="space-y-3">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-400">Matokeo ya Faili Iliyochaguliwa</h3>
+            
+            <div id="no_selection_placeholder" class="border-2 border-dashed border-slate-800 rounded-3xl p-10 text-center text-slate-500">
+              <svg class="w-10 h-10 mx-auto text-slate-700 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m-9 1V4a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+              </svg>
+              <p class="text-xs font-semibold">Bado hakuna picha iliyochaguliwa kutoka kwenye Kiteuzi.</p>
+            </div>
+
+            <!-- Detail Grid -->
+            <div id="selection_details_box" class="hidden bg-slate-950/60 border border-slate-800 rounded-3xl overflow-hidden">
+              <div class="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-800">
+                
+                <!-- Left: Thumbnail Preview -->
+                <div class="p-6 flex flex-col items-center justify-center bg-slate-900/40">
+                  <span class="block text-[9px] font-black uppercase text-slate-500 mb-3 tracking-wider">Muonekano wa Picha</span>
+                  <div class="relative w-full aspect-square max-w-[160px] bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center">
+                    <img id="image_preview" src="" alt="Muonekano wa faili" class="w-full h-full object-contain hidden" referrerPolicy="no-referrer" />
+                    <div id="image_fallback_icon" class="text-slate-700">
+                      <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right / Center: Details & Metadata -->
+                <div class="p-6 md:col-span-2 space-y-4">
+                  <div class="flex flex-wrap gap-2 items-center justify-between">
+                    <div>
+                      <span class="text-[9px] font-black uppercase text-cyan-400 tracking-wider">Maelezo ya Faili</span>
+                      <h4 id="file_name_display" class="font-extrabold text-white text-base truncate max-w-sm">Jina la Picha</h4>
+                    </div>
+                    <span id="file_size_badge" class="px-2.5 py-1 rounded bg-slate-800 text-[10px] font-bold font-mono text-slate-300">0 KB</span>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <span class="block text-[9px] font-black uppercase text-slate-500 tracking-wider">Mime Type</span>
+                      <span id="mime_type_display" class="font-bold text-slate-300 font-mono">image/png</span>
+                    </div>
+                    <div>
+                      <span class="block text-[9px] font-black uppercase text-slate-500 tracking-wider">File ID</span>
+                      <span id="file_id_display" class="font-bold text-slate-300 font-mono truncate block max-w-[150px]">ID_HERE</span>
+                    </div>
+                  </div>
+
+                  <div class="pt-2">
+                    <a id="file_drive_link" href="#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-400 hover:text-cyan-300 transition-colors">
+                      <span>Fungua Kwenye Google Drive</span>
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- RAW JSON output for developer reference -->
+            <div class="space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[9px] font-black uppercase tracking-wider text-slate-500">Google Picker & Drive API Raw Response Log</span>
+                <button onclick="copyRawLog()" class="text-[10px] font-bold text-cyan-400 hover:underline">Nakili Logi</button>
+              </div>
+              <pre id="content" class="bg-slate-950 p-4 rounded-2xl text-[10px] font-mono text-slate-400 overflow-x-auto whitespace-pre-wrap max-h-60 border border-slate-900"></pre>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Styled Footer -->
+  <footer class="w-full text-center py-6 text-[11px] text-slate-500 border-t border-slate-900/60 font-medium">
+    <p>&copy; 2026 Lupanulla Elimu Hub. Inaendeshwa salama na Google Picker API & Firebase SDK.</p>
+  </footer>
+
+  <!-- ── SCRIPT LOGIC ── -->
+  <script type="text/javascript">
+    /* Authorization scopes required by the API */
+    const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.metadata.readonly';
+
+    // Google API settings from firebase configuration file
+    const CLIENT_ID = '664691858940-d6u1ksp20m7ivuscs3eitgisinj2rlq5.apps.googleusercontent.com';
+    const API_KEY = 'AIzaSyCSa6Sr05e7fVEUUf26L7W-3RXJqbj-cuw';
+    const APP_ID = '664691858940';
+
+    let tokenClient;
+    let accessToken = null;
+    let pickerInited = false;
+    let gisInited = false;
+
+    // Initially hide buttons while loading
+    document.getElementById('authorize_button').classList.add('hidden');
+    document.getElementById('signout_button').classList.add('hidden');
+
+    /**
+     * Callback after api.js is loaded.
+     */
+    function gapiLoaded() {
+      gapi.load('client:picker', initializePicker);
+    }
+
+    /**
+     * Callback after the API client is loaded. Loads the
+     * discovery doc to initialize the API.
+     */
+    async function initializePicker() {
+      try {
+        await gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest');
+        pickerInited = true;
+        maybeEnableButtons();
+      } catch (err) {
+        console.error('Error loading drive v3 api:', err);
+        document.getElementById('content').innerText = 'Hitilafu ya kupakia Google Drive REST Client: ' + JSON.stringify(err, null, 2);
+      }
+    }
+
+    /**
+     * Callback after Google Identity Services are loaded.
+     */
+    function gisLoaded() {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: '', // defined later
+      });
+      gisInited = true;
+      maybeEnableButtons();
+    }
+
+    /**
+     * Enables user interaction after all libraries are loaded.
+     */
+    function maybeEnableButtons() {
+      if (pickerInited && gisInited) {
+        // Hide loader overlay
+        document.getElementById('loading_overlay').classList.add('hidden');
+        
+        // Show authorize or check existing state
+        document.getElementById('authorize_button').classList.remove('hidden');
+        document.getElementById('unauthorized_notice').classList.remove('hidden');
+      }
+    }
+
+    /**
+     * Sign in the user upon button click.
+     */
+    function handleAuthClick() {
+      tokenClient.callback = async (response) => {
+        if (response.error !== undefined) {
+          throw (response);
+        }
+        accessToken = response.access_token;
+        
+        // Update UI panels
+        document.getElementById('unauthorized_notice').classList.add('hidden');
+        document.getElementById('authorized_panel').classList.remove('hidden');
+        
+        document.getElementById('signout_button').classList.remove('hidden');
+        document.getElementById('authorize_button').innerText = 'Refresh Token';
+        
+        // Trigger Picker directly upon successful auth
+        await createPicker();
+      };
+
+      if (accessToken === null) {
+        // Prompt user for Google Account selection and consent
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+      } else {
+        // Skip display of account chooser for an existing session
+        tokenClient.requestAccessToken({ prompt: '' });
+      }
+    }
+
+    /**
+     * Sign out the user upon button click.
+     */
+    function handleSignoutClick() {
+      if (accessToken) {
+        google.accounts.oauth2.revoke(accessToken);
+        accessToken = null;
+        
+        // Clean log and display state
+        document.getElementById('content').innerText = '';
+        document.getElementById('authorize_button').innerText = 'Authorize Account';
+        document.getElementById('signout_button').classList.add('hidden');
+        
+        document.getElementById('unauthorized_notice').classList.remove('hidden');
+        document.getElementById('authorized_panel').classList.add('hidden');
+        
+        // Hide details panel
+        document.getElementById('selection_details_box').classList.add('hidden');
+        document.getElementById('no_selection_placeholder').classList.remove('hidden');
+      }
+    }
+
+    /**
+     * Create and render a Google Picker object for searching images.
+     */
+    function createPicker() {
+      if (!accessToken) {
+        alert('Tafadhali unganisha akaunti yako kwanza (Authorize).');
+        return;
+      }
+      
+      const view = new google.picker.View(google.picker.ViewId.DOCS);
+      // Specific image mimeTypes
+      view.setMimeTypes('image/png,image/jpeg,image/jpg,image/webp,image/gif');
+      
+      const picker = new google.picker.PickerBuilder()
+          .enableFeature(google.picker.Feature.NAV_HIDDEN)
+          .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+          .setDeveloperKey(API_KEY)
+          .setAppId(APP_ID)
+          .setOAuthToken(accessToken)
+          .addView(view)
+          .addView(new google.picker.DocsUploadView()) // Also support direct uploads
+          .setCallback(pickerCallback)
+          .build();
+      picker.setVisible(true);
+    }
+
+    /**
+     * Displays the file details of the user's selection.
+     * @param {object} data - Contains the user selection from the Google Picker.
+     */
+    async function pickerCallback(data) {
+      if (data.action === google.picker.Action.PICKED) {
+        let text = `Google Picker response:\n${JSON.stringify(data, null, 2)}\n\n`;
+        document.getElementById('content').innerText = text;
+        
+        const selectedDoc = data[google.picker.Response.DOCUMENTS][0];
+        const fileId = selectedDoc[google.picker.Document.ID];
+        const fileName = selectedDoc[google.picker.Document.NAME];
+        const mimeType = selectedDoc[google.picker.Document.MIME_TYPE];
+        const embedUrl = selectedDoc[google.picker.Document.URL];
+        
+        // Fetch full metadata via Drive API
+        try {
+          const res = await gapi.client.drive.files.get({
+            'fileId': fileId,
+            'fields': '*',
+          });
+          text += `Drive API response for first document:\n${JSON.stringify(res.result, null, 2)}\n`;
+          document.getElementById('content').innerText = text;
+          
+          // Render to GUI Detail Panel
+          document.getElementById('no_selection_placeholder').classList.add('hidden');
+          document.getElementById('selection_details_box').classList.remove('hidden');
+          
+          document.getElementById('file_name_display').innerText = fileName;
+          document.getElementById('mime_type_display').innerText = mimeType;
+          document.getElementById('file_id_display').innerText = fileId;
+          document.getElementById('file_drive_link').href = embedUrl;
+          
+          // Handle File size formatting
+          const sizeBytes = parseInt(res.result.size || '0');
+          if (sizeBytes > 0) {
+            const sizeKB = (sizeBytes / 1024).toFixed(1);
+            document.getElementById('file_size_badge').innerText = `${sizeKB} KB`;
+          } else {
+            document.getElementById('file_size_badge').innerText = 'N/A';
+          }
+          
+          // Show thumbnail/preview image if available from drive API response or picker doc
+          const previewImg = document.getElementById('image_preview');
+          const fallbackIcon = document.getElementById('image_fallback_icon');
+          
+          const thumbUrl = res.result.thumbnailLink || selectedDoc[google.picker.Document.THUMBNAIL_URL];
+          if (thumbUrl) {
+            previewImg.src = thumbUrl;
+            previewImg.classList.remove('hidden');
+            fallbackIcon.classList.add('hidden');
+          } else {
+            previewImg.classList.add('hidden');
+            fallbackIcon.classList.remove('hidden');
+          }
+
+          // Optional: Communicate selection back to parent window if inside iframe
+          if (window.opener || window.parent !== window) {
+            const msgData = {
+              type: 'GOOGLE_PICKER_IMAGE_SELECTED',
+              fileId: fileId,
+              name: fileName,
+              mimeType: mimeType,
+              url: embedUrl,
+              thumbnailUrl: thumbUrl
+            };
+            // Send to parent / opener
+            if (window.opener) {
+              window.opener.postMessage(msgData, '*');
+            }
+            if (window.parent !== window) {
+              window.parent.postMessage(msgData, '*');
+            }
+          }
+          
+        } catch (err) {
+          console.error('Error fetching file metadata:', err);
+          text += `Hitilafu ya kupata data ya ziada kutoka Drive API: ${JSON.stringify(err)}\n`;
+          document.getElementById('content').innerText = text;
+        }
+      }
+    }
+
+    function copyRawLog() {
+      const logContent = document.getElementById('content').innerText;
+      if (!logContent) {
+        alert('Hakuna logi inayoweza kunakiliwa kwa sasa.');
+        return;
+      }
+      navigator.clipboard.writeText(logContent)
+        .then(() => alert('Logi imesafirishwa salama kwenye Clipboard yako!'))
+        .catch(() => alert('Haikuweza kunakiliwa.'));
+    }
+  </script>
+
+  <!-- Load Google APIs SDK & Identity Services Client Libraries -->
+  <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+  <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+</body>
+</html>

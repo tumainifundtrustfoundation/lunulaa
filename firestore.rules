@@ -1,0 +1,294 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Common Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function getUserData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function isUserWithRole(role) {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData(request.auth.uid).role == role;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin" ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "super_admin"
+      );
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "super_admin");
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidEducationalResource(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 1000
+        && data.url is string && data.url.size() > 0 && data.url.size() <= 500
+        && data.category is string && data.category.size() > 0 && data.category.size() <= 100
+        && (data.isVerified == true || data.isVerified == false)
+        && data.clicksCount is int
+        && data.recommendationsCount is int
+        && data.recommendedByUsers is list && data.recommendedByUsers.size() <= 50000
+        && data.createdAt is int
+        && data.createdBy is string && data.createdBy.size() <= 128
+        && data.createdByName is string && data.createdByName.size() <= 200
+        && (!('id' in data) || (data.id is string && data.id.size() <= 128))
+        && (!('institution' in data) || (data.institution is string && data.institution.size() <= 200))
+        && (!('region' in data) || (data.region is string && data.region.size() <= 50))
+        && (!('tags' in data) || (data.tags is list && data.tags.size() <= 50));
+    }
+
+    // Public Collections (Accessible by everyone)
+    match /matangazo/{annId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /educational_resources/{resourceId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isAdmin() && isValidId(resourceId) && isValidEducationalResource(request.resource.data)
+        && request.resource.data.clicksCount == 0
+        && request.resource.data.recommendationsCount == 0
+        && request.resource.data.recommendedByUsers.size() == 0;
+      allow update: if isValidEducationalResource(request.resource.data) && (
+        (isSignedIn() && isAdmin())
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicksCount']) && request.resource.data.clicksCount == resource.data.clicksCount + 1)
+        || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['recommendedByUsers', 'recommendationsCount']))
+      );
+      allow delete: if isSignedIn() && isAdmin();
+    }
+
+    match /videos/{vidId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    match /products/{prodId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      
+      allow create: if isSignedIn() && request.auth.uid == userId 
+        && request.resource.data.uid == request.auth.uid
+        && (
+          request.resource.data.role == "student" 
+          || (
+            (request.auth.uid == "a9wJ0DcKpkN9I9iyO2yQzcI7VlT2" || request.auth.token.email.lower() == "lupanulla.co.tz@gmail.com") 
+            && request.resource.data.role == "super_admin"
+            && request.resource.data.subscription == "premium"
+          )
+        )
+        && (request.resource.data.subscription == "free" || request.resource.data.subscription == "premium")
+        && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100
+        && request.resource.data.email is string && request.resource.data.email.size() > 0 && request.resource.data.email.size() <= 100;
+
+      allow update: if isSignedIn() && (
+        (request.auth.uid == userId 
+          && (
+            (request.resource.data.role == resource.data.role && request.resource.data.subscription == resource.data.subscription)
+            || (
+              (request.auth.uid == "a9wJ0DcKpkN9I9iyO2yQzcI7VlT2" || request.auth.token.email.lower() == "lupanulla.co.tz@gmail.com")
+              && request.resource.data.role == "super_admin"
+              && request.resource.data.subscription == "premium"
+            )
+          )
+          && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 100
+          && request.resource.data.email == resource.data.email)
+        || isAdmin()
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // Documents collection
+    match /documents/{docId} {
+      allow get: if isValidId(docId) && (
+        resource.data.status == "approved" 
+        || (isSignedIn() && (resource.data.uploadedBy == request.auth.uid || isAdmin()))
+      );
+
+      allow list: if (resource.data.status == "approved")
+        || (isSignedIn() && (resource.data.uploadedBy == request.auth.uid || isAdmin()));
+
+      allow create: if isSignedIn() && isValidId(docId)
+        && request.resource.data.id == docId
+        && (
+          (request.resource.data.uploadedBy == request.auth.uid && request.resource.data.status == "pending")
+          || isAdmin()
+        )
+        && request.resource.data.views == 0
+        && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 200
+        && request.resource.data.description is string && request.resource.data.description.size() <= 1000
+        && request.resource.data.category is string && request.resource.data.category.size() > 0 && request.resource.data.category.size() <= 100
+        && request.resource.data.fileId is string && request.resource.data.fileId.size() > 0
+        && request.resource.data.driveUrl is string && request.resource.data.driveUrl.size() > 0
+        && request.resource.data.uploadedByName is string && request.resource.data.uploadedByName.size() > 0;
+
+      allow update: if isSignedIn() && isValidId(docId) && (
+        isAdmin() 
+        || (resource.data.uploadedBy == request.auth.uid 
+            && request.resource.data.uploadedBy == resource.data.uploadedBy
+            && request.resource.data.status == resource.data.status
+            && request.resource.data.views == resource.data.views
+            && request.resource.data.fileId == resource.data.fileId
+            && request.resource.data.driveUrl == resource.data.driveUrl
+            && request.resource.data.title is string && request.resource.data.title.size() > 0 && request.resource.data.title.size() <= 200
+            && request.resource.data.description is string && request.resource.data.description.size() <= 1000
+            && request.resource.data.category is string && request.resource.data.category.size() > 0 && request.resource.data.category.size() <= 100)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'downloadsCount']))
+      );
+
+      allow delete: if isSignedIn() && isValidId(docId) && (
+        isAdmin() || resource.data.uploadedBy == request.auth.uid
+      );
+    }
+
+    // Notifications collection
+    match /notifications/{notifId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == "all");
+      allow create: if true; // Allow system to create notifications via client triggers if needed, but consider server-only in future
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == "all") && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isAdmin();
+    }
+
+    // Feedback collection
+    match /feedback/{feedbackId} {
+      allow create: if isSignedIn();
+      allow read, write: if isAdmin();
+    }
+
+    // Certificates collection
+    match /certificates/{certId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Exam Results collection
+    match /exam_results/{resId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Payment Transactions collection
+    match /payment_transactions/{txId} {
+      allow create: if isSignedIn();
+      allow read, write: if isAdmin();
+    }
+
+    // Comments collection
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Orders collection
+    match /orders/{orderId} {
+      allow create: if isSignedIn();
+      allow read, write: if isAdmin();
+    }
+
+    // Wishlist collection
+    match /wishlist/{wishId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Quick Buy Orders
+    match /quick_buy_orders/{orderId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Highlights collection
+    match /highlights/{hId} {
+      allow read, write: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Website News collection
+    match /website_news/{newsId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Audit Logs collection
+    match /audit_logs/{logId} {
+      allow create: if isSignedIn() && isAdmin();
+      allow read, list: if isSuperAdmin();
+    }
+
+    // System Configurations collection
+    match /system_configs/{configId} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // User Bookmarks
+    match /user_bookmarks/{bookmarkId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Necta Progress collection
+    match /necta_progress/{progressId} {
+      allow read, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid
+        && request.resource.data.id == progressId
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.level is string && request.resource.data.level.size() <= 50
+        && request.resource.data.subject is string && request.resource.data.subject.size() <= 100
+        && request.resource.data.year is string && request.resource.data.year.size() <= 10
+        && (request.resource.data.status == "not_started" || request.resource.data.status == "in_progress" || request.resource.data.status == "completed")
+        && request.resource.data.updatedAt == request.time;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.id == progressId
+        && request.resource.data.level == resource.data.level
+        && request.resource.data.subject == resource.data.subject
+        && request.resource.data.year == resource.data.year
+        && (request.resource.data.status == "not_started" || request.resource.data.status == "in_progress" || request.resource.data.status == "completed")
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Study Events / Calendar collection
+    match /study_events/{eventId} {
+      allow read, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid
+        && request.resource.data.id == eventId
+        && request.resource.data.title is string && request.resource.data.title.size() <= 100
+        && request.resource.data.date is string && request.resource.data.date.size() <= 15;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.id == eventId;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

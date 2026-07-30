@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="sw">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lupanulla Elimu Hub | Kitovu cha Elimu Tanzania</title>
+    <meta name="description" content="Jukwaa la kwanza la kidijitali Tanzania linalounganisha mtaala mzima wa elimu - notisi, mitihani ya NECTA, video, duka, na msaidizi wa AI." />
+    <meta name="keywords" content="Lupanulla, Elimu Hub, notisi tanzania, mitihani ya necta, past papers tanzania, necta exams, o-level, a-level, kiswahili notes, fizikia notes, chemistry notes, biolojia notes, tanzania secondary schools, syllabus tanzania" />
+    <meta name="author" content="Lupanulla Elimu Hub" />
+    <meta name="theme-color" content="#0891b2" />
+    <meta name="google-site-verification" content="FLsipcLlG5OiRexS_LmjP0KkNzupFbfLsklrm-HTrko" />
+    <meta name="monetag" content="aa1825d8184d9f1e189b4714f7c6ea5f" />
+    
+    <!-- PWA / App Home Screen Meta Tags -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Lupanulla" />
+    <link rel="apple-touch-icon" href="/logo.jpg" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://lupanulla.co.tz/" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://lupanulla.co.tz/" />
+    <meta property="og:title" content="Lupanulla Elimu Hub | Kitovu cha Elimu Tanzania" />
+    <meta property="og:description" content="Jukwaa la kwanza la kidijitali Tanzania linalounganisha mtaala mzima wa elimu - notisi, mitihani ya NECTA, video, duka, na msaidizi wa AI." />
+    <meta property="og:image" content="https://lupanulla.co.tz/logo.jpg" />
+    <meta property="og:site_name" content="Lupanulla Elimu Hub" />
+    <meta property="og:locale" content="sw_TZ" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://lupanulla.co.tz/" />
+    <meta name="twitter:title" content="Lupanulla Elimu Hub | Kitovu cha Elimu Tanzania" />
+    <meta name="twitter:description" content="Jukwaa la kwanza la kidijitali Tanzania linalounganisha mtaala mzima wa elimu - notisi, mitihani ya NECTA, video, duka, na msaidizi wa AI." />
+    <meta name="twitter:image" content="https://lupanulla.co.tz/logo.jpg" />
+
+    <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+    
+    <!-- Structured Data (Schema.org JSON-LD) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "EducationalOrganization",
+        "name": "Lupanulla Elimu Hub",
+        "url": "https://lupanulla.co.tz/",
+        "logo": "https://lupanulla.co.tz/logo.jpg",
+        "description": "Jukwaa la kwanza la kidijitali Tanzania linalounganisha mtaala mzima wa elimu - notisi, mitihani ya NECTA, video, duka, na msaidizi wa AI.",
+        "address": {
+          "@type": "PostalAddress",
+          "addressCountry": "TZ",
+          "addressLocality": "Dar es Salaam"
+        },
+        "sameAs": [
+          "https://twitter.com/lupanulla",
+          "https://www.facebook.com/lupanulla",
+          "https://www.instagram.com/lupanulla"
+        ]
+      }
+    </script>
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "url": "https://lupanulla.co.tz/",
+        "name": "Lupanulla Elimu Hub",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://lupanulla.co.tz/?search={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    </script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-E4MYGRPFK4"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-E4MYGRPFK4');
+    </script>
+
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4209377418042440"
+         crossorigin="anonymous"></script>
+  </head>
+  <body class="bg-slate-50 antialiased font-sans">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('SW registered: ', registration);
+            })
+            .catch(registrationError => {
+              console.log('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
+

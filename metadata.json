@@ -1,0 +1,7 @@
+{
+  "name": "Lupanulla Elimu Hub",
+  "description": "Jukwaa la kwanza la kidijitali Tanzania linalounganisha mtaala mzima wa elimu - notisi, mitihani, video, duka la vitabu, msaidizi wa AI (Lupanulla AI), na Hub ya Vyanzo vya Elimu.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"],
+  "version": "2.5.0"
+}

@@ -1,0 +1,202 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Custom App Themes configuration */
+
+:root, .theme-tanzania-forest {
+  --color-bg: #f5fcf8; /* Calming forest-tinted pale green */
+  --color-card: #ffffff;
+  --color-text: #0b2516; /* Deep dark forest pine text */
+  --color-text-muted: #3d5e4a; /* Medium foliage green-gray */
+  --color-primary: #10b981; /* Emerald green (Tanzania Forest core teal/green) */
+  --color-primary-hover: #059669; /* Slightly deeper emerald green */
+  --color-primary-light: #ecfdf5; /* Emerald 50 soft background */
+  --color-border: #e2f2e7; /* Light mint/forest-border lines */
+}
+
+.theme-night-mode {
+  --color-bg: #090e17; /* Deep safe slate/charcoal background */
+  --color-card: #111827; /* Dark slate gray container backgrounds */
+  --color-text: #f3f4f6; /* Bright crisp easy-to-read slate-50 text */
+  --color-text-muted: #9ca3af; /* Muted gray text for headers & subtext */
+  --color-primary: #2dd4bf; /* Bright teal-400 accent color */
+  --color-primary-hover: #14b8a6; /* Teal-500 accent color on hover */
+  --color-primary-light: #115e59; /* Deep teal active text color background */
+  --color-border: #1f2937; /* Dark borders matching cards */
+}
+
+.theme-high-contrast {
+  --color-bg: #000000; /* Pure deep black background */
+  --color-card: #000000; /* Pure deep black card background */
+  --color-text: #ffffff; /* Pure extreme white text */
+  --color-text-muted: #ffffff; /* Pure extreme white text */
+  --color-primary: #facc15; /* Extremely bright neon yellow-400 elements */
+  --color-primary-hover: #eab308; /* Hover yellow-500 */
+  --color-primary-light: #2d2800; /* Dark contrast yellow active backgrounds */
+  --color-border: #ffffff; /* Strong white border lines */
+}
+
+/* Force overrides on the root or active container element */
+.theme-tanzania-forest, .theme-night-mode, .theme-high-contrast {
+  background-color: var(--color-bg) !important;
+  color: var(--color-text) !important;
+}
+
+/* Override background colors of cards, inputs, and common containers */
+.theme-tanzania-forest .bg-white,
+.theme-night-mode .bg-white,
+.theme-high-contrast .bg-white {
+  background-color: var(--color-card) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+}
+
+/* Inputs and interactive items */
+.theme-tanzania-forest input, .theme-tanzania-forest select, .theme-tanzania-forest textarea,
+.theme-night-mode input, .theme-night-mode select, .theme-night-mode textarea,
+.theme-high-contrast input, .theme-high-contrast select, .theme-high-contrast textarea {
+  background-color: var(--color-card) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+}
+
+/* General border color overrides */
+.theme-tanzania-forest .border, .theme-tanzania-forest .border-slate-100, .theme-tanzania-forest .border-slate-200,
+.theme-night-mode .border, .theme-night-mode .border-slate-100, .theme-night-mode .border-slate-200,
+.theme-high-contrast .border, .theme-high-contrast .border-slate-100, .theme-high-contrast .border-slate-200 {
+  border-color: var(--color-border) !important;
+}
+
+/* Thick borders for high-contrast accessibility */
+.theme-high-contrast .border,
+.theme-high-contrast .border-slate-100,
+.theme-high-contrast .border-slate-200 {
+  border-width: 2px !important;
+}
+
+/* Override general texts */
+.theme-tanzania-forest .text-slate-900, .theme-tanzania-forest .text-slate-950, .theme-tanzania-forest .text-slate-800, .theme-tanzania-forest h1, .theme-tanzania-forest h2, .theme-tanzania-forest h3,
+.theme-night-mode .text-slate-900, .theme-night-mode .text-slate-950, .theme-night-mode .text-slate-800, .theme-night-mode h1, .theme-night-mode h2, .theme-night-mode h3,
+.theme-high-contrast .text-slate-900, .theme-high-contrast .text-slate-950, .theme-high-contrast .text-slate-800, .theme-high-contrast h1, .theme-high-contrast h2, .theme-high-contrast h3 {
+  color: var(--color-text) !important;
+}
+
+.theme-tanzania-forest .text-slate-500, .theme-tanzania-forest .text-slate-400,
+.theme-night-mode .text-slate-500, .theme-night-mode .text-slate-400,
+.theme-high-contrast .text-slate-500, .theme-high-contrast .text-slate-400 {
+  color: var(--color-text-muted) !important;
+}
+
+/* Accent texts, backgrounds, and active active buttons overrides */
+.theme-tanzania-forest .text-cyan-600,
+.theme-night-mode .text-cyan-600,
+.theme-high-contrast .text-cyan-600 {
+  color: var(--color-primary) !important;
+}
+
+.theme-tanzania-forest .bg-cyan-600,
+.theme-night-mode .bg-cyan-600,
+.theme-high-contrast .bg-cyan-600 {
+  background-color: var(--color-primary) !important;
+  color: var(--color-bg) !important;
+}
+
+.theme-tanzania-forest .bg-cyan-600:hover, .theme-tanzania-forest .hover\:bg-cyan-700:hover,
+.theme-night-mode .bg-cyan-600:hover, .theme-night-mode .hover\:bg-cyan-700:hover,
+.theme-high-contrast .bg-cyan-600:hover, .theme-high-contrast .hover\:bg-cyan-700:hover {
+  background-color: var(--color-primary-hover) !important;
+  color: var(--color-bg) !important;
+}
+
+.theme-tanzania-forest .bg-cyan-50,
+.theme-night-mode .bg-cyan-50,
+.theme-high-contrast .bg-cyan-50 {
+  background-color: var(--color-primary-light) !important;
+  color: var(--color-primary) !important;
+}
+
+/* Active buttons background in tabs */
+.theme-tanzania-forest .bg-white.text-cyan-600,
+.theme-night-mode .bg-white.text-cyan-600,
+.theme-high-contrast .bg-white.text-cyan-600 {
+  background-color: var(--color-primary) !important;
+  color: var(--color-bg) !important;
+}
+
+.theme-tanzania-forest .text-cyan-700,
+.theme-night-mode .text-cyan-700,
+.theme-high-contrast .text-cyan-700 {
+  color: var(--color-primary-hover) !important;
+}
+
+.theme-tanzania-forest .bg-slate-100,
+.theme-night-mode .bg-slate-100,
+.theme-high-contrast .bg-slate-100 {
+  background-color: var(--color-border) !important;
+}
+
+/* 3D Flashcard Flip Helper Utilities */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+.animate-spin-slow {
+  animation: spin 8s linear infinite;
+}
+
+/* Left-to-Right Floating Marquee Ticker */
+@keyframes marquee-ltr {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-marquee-ltr {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee-ltr 30s linear infinite;
+}
+
+.animate-marquee-ltr:hover {
+  animation-play-state: paused;
+}
+
+/* Specifically style for clean, readable document printing */
+@media print {
+  /* Hide all interactive components and layout scaffolding */
+  html, body, #root, #app, header, nav, footer, sidebar, .no-print, button, select, input, .lucide, [role="tablist"], .bg-slate-200\/60, .lg\:col-span-1 {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: #111827 !important;
+  }
+
+  /* Force display the printable container */
+  .print-only-container {
+    display: block !important;
+    visibility: visible !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+  }
+}
+

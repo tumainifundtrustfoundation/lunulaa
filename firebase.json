@@ -1,0 +1,8 @@
+{
+  "firestore": [
+    {
+      "database": "ai-studio-lupanullaelimuhu-abc7a195-7e19-4695-b20a-82e818d9a037",
+      "rules": "firestore.rules"
+    }
+  ]
+}

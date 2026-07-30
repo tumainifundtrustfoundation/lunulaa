@@ -1,0 +1,375 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Information about a user including their role and subscription level.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Unique identifier of the user matching request.auth.uid"
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["student", "author", "admin", "super_admin"],
+          "description": "The system role of the user."
+        },
+        "subscription": {
+          "type": "string",
+          "enum": ["free", "premium"],
+          "description": "Subscription tier of the user."
+        },
+        "isSuspended": {
+          "type": "boolean",
+          "description": "Whether the user's account has been suspended."
+        },
+        "suspendedAt": {
+          "type": "integer",
+          "description": "Timestamp when the user was suspended."
+        },
+        "suspensionReason": {
+          "type": "string",
+          "description": "The reason why the user was suspended."
+        }
+      },
+      "required": ["uid", "name", "email", "role", "subscription"]
+    },
+    "Document": {
+      "title": "Document Share",
+      "description": "Metadata for shared documents stored on Google Drive.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the document entry in Firestore."
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the document."
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief description of the document contents."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category folder structure (e.g. Science, Mathematics, History)."
+        },
+        "tags": {
+          "type": "array",
+          "description": "Array of tags associated with the document."
+        },
+        "fileId": {
+          "type": "string",
+          "description": "The Google Drive File ID."
+        },
+        "driveUrl": {
+          "type": "string",
+          "description": "The shareable view URL for the Google Drive viewer."
+        },
+        "uploadedBy": {
+          "type": "string",
+          "description": "User UID who uploaded the file."
+        },
+        "uploadedByName": {
+          "type": "string",
+          "description": "Display name of the user who uploaded the file."
+        },
+        "createdAt": {
+          "type": "integer",
+          "description": "Timestamp when the document entry was created."
+        },
+        "views": {
+          "type": "integer",
+          "description": "Number of views the document has received."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"],
+          "description": "Moderation status of the document."
+        }
+      },
+      "required": ["id", "title", "description", "category", "tags", "fileId", "driveUrl", "uploadedBy", "uploadedByName", "createdAt", "views", "status"]
+    },
+    "Certificate": {
+      "title": "Certificate",
+      "description": "Student course and exam completion certificates with verification code.",
+      "type": "object",
+      "properties": {
+        "studentName": { "type": "string" },
+        "courseName": { "type": "string" },
+        "subject": { "type": "string" },
+        "grade": { "type": "string" },
+        "score": { "type": "integer" },
+        "dateAwarded": { "type": "string" },
+        "verificationCode": { "type": "string" },
+        "issuedBy": { "type": "string" },
+        "studentEmail": { "type": "string" }
+      },
+      "required": ["studentName", "courseName", "subject", "grade", "score", "dateAwarded", "verificationCode", "issuedBy"]
+    },
+    "ExamResult": {
+      "title": "ExamResult",
+      "description": "Student terminal, mock or monthly exam results with subject grades and division.",
+      "type": "object",
+      "properties": {
+        "studentName": { "type": "string" },
+        "candidateCode": { "type": "string" },
+        "examType": { "type": "string" },
+        "level": { "type": "string" },
+        "year": { "type": "integer" },
+        "division": { "type": "string" },
+        "gpa": { "type": "number" },
+        "subjects": { "type": "array" },
+        "publishedAt": { "type": "integer" },
+        "status": { "type": "string", "enum": ["draft", "published"] }
+      },
+      "required": ["studentName", "candidateCode", "examType", "level", "year", "division", "gpa", "subjects", "publishedAt", "status"]
+    },
+    "AuditLog": {
+      "title": "Audit Log",
+      "description": "Log of actions performed by administrators for security and tracking.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "adminId": { "type": "string" },
+        "adminName": { "type": "string" },
+        "adminEmail": { "type": "string" },
+        "action": { "type": "string" },
+        "targetId": { "type": "string" },
+        "targetName": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "integer" }
+      },
+      "required": ["id", "adminId", "adminName", "adminEmail", "action", "targetId", "targetName", "timestamp"]
+    },
+    "SystemConfig": {
+      "title": "System Configuration",
+      "description": "Sensitive credentials and toggle configurations for platform integrations.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "oauthGoogleClientId": { "type": "string" },
+        "oauthGoogleClientSecret": { "type": "string" },
+        "mfaEnabled": { "type": "boolean" },
+        "mpesaConsumerKey": { "type": "string" },
+        "mpesaConsumerSecret": { "type": "string" },
+        "mpesaPasskey": { "type": "string" },
+        "airtelMoneyClientId": { "type": "string" },
+        "airtelMoneyClientSecret": { "type": "string" },
+        "mixByYasApiKey": { "type": "string" },
+        "stripePublicKey": { "type": "string" },
+        "stripeSecretKey": { "type": "string" },
+        "paypalClientId": { "type": "string" },
+        "paypalSecretKey": { "type": "string" },
+        "geminiApiKey": { "type": "string" },
+        "googleMeetClientId": { "type": "string" },
+        "zoomClientId": { "type": "string" },
+        "zoomClientSecret": { "type": "string" },
+        "supabaseUrl": { "type": "string" },
+        "supabaseServiceKey": { "type": "string" },
+        "cloudflareR2Bucket": { "type": "string" },
+        "cloudflareR2AccessKey": { "type": "string" },
+        "cloudflareR2SecretKey": { "type": "string" },
+        "emailSmtpHost": { "type": "string" },
+        "emailSmtpPort": { "type": "integer" },
+        "emailSmtpUser": { "type": "string" },
+        "emailSmtpPass": { "type": "string" },
+        "googleAnalyticsId": { "type": "string" },
+        "googleSearchConsoleId": { "type": "string" },
+        "clarityId": { "type": "string" },
+        "cloudflareWafZoneId": { "type": "string" },
+        "updatedAt": { "type": "integer" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["id"]
+    },
+    "EducationalResource": {
+      "title": "Educational Resource",
+      "description": "Trusted educational resources and links curated by admins or proposed by community.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "url": { "type": "string" },
+        "category": { "type": "string" },
+        "isVerified": { "type": "boolean" },
+        "clicksCount": { "type": "integer" },
+        "recommendationsCount": { "type": "integer" },
+        "recommendedByUsers": { "type": "array" },
+        "createdAt": { "type": "integer" },
+        "createdBy": { "type": "string" },
+        "createdByName": { "type": "string" },
+        "institution": { "type": "string" },
+        "region": { "type": "string" },
+        "tags": { "type": "array" }
+      },
+      "required": ["id", "title", "url", "category", "isVerified", "clicksCount", "recommendationsCount", "recommendedByUsers", "createdAt", "createdBy", "createdByName"]
+    },
+    "WishlistItem": {
+      "title": "Wishlist Item",
+      "description": "A book or resource saved by a student to their personal wishlist.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The UID of the student."
+        },
+        "productId": {
+          "type": "string",
+          "description": "The ID of the product."
+        },
+        "addedAt": {
+          "type": "integer",
+          "description": "Timestamp when added."
+        }
+      },
+      "required": ["userId", "productId", "addedAt"]
+    },
+    "QuickBuyOrder": {
+      "title": "Quick Buy Order",
+      "description": "A pending order for a specific product waiting for manual verification.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "amount": { "type": "integer" },
+        "transactionId": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "verified", "failed"] },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["userId", "productId", "productName", "amount", "transactionId", "phoneNumber", "status", "createdAt"]
+    },
+    "NectaProgress": {
+      "title": "NECTA Exam Progress",
+      "description": "Student's marked completion status for specific exam subjects and years.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "level": { "type": "string" },
+        "subject": { "type": "string" },
+        "year": { "type": "string" },
+        "status": { "type": "string", "enum": ["not_started", "in_progress", "completed"] },
+        "notes": { "type": "string" },
+        "updatedAt": { "type": "integer" }
+      },
+      "required": ["id", "userId", "level", "subject", "year", "status", "updatedAt"]
+    },
+    "StudyEvent": {
+      "title": "Study Event / Task",
+      "description": "Calendar task or study event for planning revision schedules.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "subject": { "type": "string" },
+        "notes": { "type": "string" },
+        "isCompleted": { "type": "boolean" },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["id", "userId", "title", "date", "isCompleted", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/study_events/{eventId}": {
+      "schema": {
+        "$ref": "#/entities/StudyEvent"
+      },
+      "description": "Student study schedule and event logs."
+    },
+    "/necta_progress/{progressId}": {
+      "schema": {
+        "$ref": "#/entities/NectaProgress"
+      },
+      "description": "Student revision and past paper completion progress logs."
+    },
+    "/quick_buy_orders/{orderId}": {
+      "schema": {
+        "$ref": "#/entities/QuickBuyOrder"
+      },
+      "description": "Pending quick buy orders for manual verification."
+    },
+    "/wishlist/{wishId}": {
+      "schema": {
+        "$ref": "#/entities/WishlistItem"
+      },
+      "description": "Personal wishlist for students."
+    },
+    "/educational_resources/{resourceId}": {
+      "schema": {
+        "$ref": "#/entities/EducationalResource"
+      },
+      "description": "Collection of trusted educational links and directories."
+    },
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "A user's profile configuration and preferences."
+    },
+    "/documents/{documentId}": {
+      "schema": {
+        "$ref": "#/entities/Document"
+      },
+      "description": "A catalog of shareable documents stored in Google Drive and searchable in Firestore."
+    },
+    "/matangazo/{annId}": {
+      "schema": "object",
+      "description": "Announcements and news for the platform."
+    },
+    "/videos/{vidId}": {
+      "schema": "object",
+      "description": "Educational videos."
+    },
+    "/products/{prodId}": {
+      "schema": "object",
+      "description": "Products or resources for sale."
+    },
+    "/notifications/{notifId}": {
+      "schema": "object",
+      "description": "User notifications."
+    },
+    "/feedback/{feedbackId}": {
+      "schema": "object",
+      "description": "Student feedback and reports."
+    },
+    "/certificates/{certId}": {
+      "schema": {
+        "$ref": "#/entities/Certificate"
+      },
+      "description": "Issued academic certificates."
+    },
+    "/exam_results/{resId}": {
+      "schema": {
+        "$ref": "#/entities/ExamResult"
+      },
+      "description": "Student national, mock or monthly exam results transcripts."
+    },
+    "/audit_logs/{logId}": {
+      "schema": {
+        "$ref": "#/entities/AuditLog"
+      },
+      "description": "Administrative audit logs tracking crucial security and moderation actions."
+    },
+    "/system_configs/{configId}": {
+      "schema": {
+        "$ref": "#/entities/SystemConfig"
+      },
+      "description": "Sensitive credentials and third-party configuration keys."
+    }
+  }
+}

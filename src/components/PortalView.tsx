@@ -580,6 +580,9 @@ export default function PortalView({ onNavigate, userProfile }: PortalViewProps)
               <a href="https://wa.me/255699479032" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-full transition-all shrink-0">
                 <MessageCircle size={14} /> WhatsApp Chat
               </a>
+              <a href="https://whatsapp.com/channel/0029Vb7zr5U0AgWJSliYQe2Q" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold text-xs px-4 py-2.5 rounded-full transition-all shrink-0 shadow-sm">
+                <MessageCircle size={14} /> Jiunge na WhatsApp Channel
+              </a>
             </div>
           </div>
         </div>

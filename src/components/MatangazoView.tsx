@@ -720,6 +720,17 @@ export default function MatangazoView({ userProfile }: { userProfile: any }) {
                 </a>
               </div>
               <div className="flex items-center gap-2.5">
+                <MessageCircle size={16} className="text-emerald-600 shrink-0" />
+                <a 
+                  href="https://whatsapp.com/channel/0029Vb7zr5U0AgWJSliYQe2Q" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center gap-1 hover:underline hover:text-emerald-500"
+                >
+                  Jiunge na WhatsApp Channel
+                </a>
+              </div>
+              <div className="flex items-center gap-2.5">
                 <MapPin size={16} className="text-cyan-600 shrink-0" />
                 <span>Dar es Salaam, Tanzania</span>
               </div>

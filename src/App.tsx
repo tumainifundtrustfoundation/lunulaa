@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   onAuthStateChanged, 
   signInWithEmailAndPassword, 
@@ -25,7 +26,10 @@ import {
   BookOpen,
   ShieldAlert,
   LogOut,
-  Cookie
+  Cookie,
+  MessageSquare,
+  MessageCircle,
+  ExternalLink
 } from 'lucide-react';
 
 import { UserProfile, AppTheme } from './types';
@@ -126,6 +130,7 @@ export default function App() {
 
   const [theme, setTheme] = useState<AppTheme>((localStorage.getItem('lupanulla-theme') as AppTheme) || 'theme-tanzania-forest');
   const [language, setLanguage] = useState<'sw' | 'en'>((localStorage.getItem('lupanulla-lang') as 'sw' | 'en') || 'sw');
+  const [showWhatsAppFloating, setShowWhatsAppFloating] = useState<boolean>(true);
 
   // Synchronize language with localStorage
   useEffect(() => {
@@ -147,12 +152,20 @@ export default function App() {
     };
   }, []);
 
-  // Synchronize theme with localStorage and DOM body
+  // Synchronize theme with localStorage and DOM body with smooth transitions
   useEffect(() => {
     localStorage.setItem('lupanulla-theme', theme);
     const body = document.body;
+    body.classList.add('theme-transitioning');
+
     body.classList.remove('theme-tanzania-forest', 'theme-night-mode', 'theme-high-contrast');
     body.classList.add(theme);
+
+    const timer = setTimeout(() => {
+      body.classList.remove('theme-transitioning');
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [theme]);
 
   // Routing State - defaults to 'portal' (the landing page)
@@ -1154,13 +1167,44 @@ export default function App() {
           </div>
 
           <div className="space-y-3.5">
-            <h4 className="font-display font-extrabold text-[10px] text-white uppercase tracking-widest mb-4">Mawasiliano yetu</h4>
-            <p className="text-[11px] leading-relaxed font-semibold">
-              Kama una maoni au unahitaji usaidizi wa haraka kujiunga na Premium, wasiliana nasi:
+            <h4 className="font-display font-extrabold text-[10px] text-white uppercase tracking-widest mb-4">Mawasiliano &amp; Maoni</h4>
+            <p className="text-[11px] leading-relaxed font-semibold text-slate-300">
+              Kama una maoni, maswali au unahitaji usaidizi, wasiliana na timu yetu:
             </p>
-            <div className="flex items-center gap-2 bg-slate-900 border border-slate-850 rounded-xl p-2.5 w-fit">
+
+            <div className="flex flex-col gap-2 pt-1">
+              <a
+                href="https://whatsapp.com/channel/0029Vb7zr5U0AgWJSliYQe2Q"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] py-2.5 px-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
+              >
+                <MessageCircle className="w-4 h-4 text-white" />
+                <span>Jiunge na WhatsApp Channel</span>
+                <ExternalLink className="w-3 h-3 text-emerald-200" />
+              </a>
+
+              <button
+                type="button"
+                onClick={() => setIsFeedbackOpen(true)}
+                className="w-full bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-extrabold text-[11px] py-2 px-3.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
+              >
+                <MessageSquare className="w-4 h-4 text-slate-950" />
+                <span>Form ya Maoni &amp; Msaada</span>
+              </button>
+
+              <a
+                href="mailto:tumainifundtrustfoundation@gmail.com?subject=Mawasiliano%20na%20Maoni%20-%20Lupanulla%20Elimu%20Hub&body=Habari%20Timu%20ya%20Lupanulla%2C%0A%0ANina%20maoni%2Fmaswali%20yafuatayo%3A%0A%0A"
+                className="w-full bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-200 hover:text-white font-bold text-[11px] py-2 px-3.5 rounded-xl flex items-center justify-center gap-2 transition-all"
+              >
+                <Mail className="w-4 h-4 text-emerald-400" />
+                <span>Tuma Barua Pepe (Email)</span>
+              </a>
+            </div>
+
+            <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-850 rounded-xl p-2.5 w-fit mt-1">
               <ShieldCheck size={16} className="text-cyan-400" />
-              <span>Google Drive &amp; Firebase Secured</span>
+              <span className="text-[10px]">Google Drive &amp; Firebase Secured</span>
             </div>
           </div>
 
@@ -1749,7 +1793,7 @@ export default function App() {
                   )}
                 </form>
 
-                <div className="text-center pt-3 border-t border-slate-100 flex flex-col items-center gap-1.5">
+                <div className="text-center pt-3 border-t border-slate-100 flex flex-col items-center gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -1762,6 +1806,17 @@ export default function App() {
                   >
                     <Sparkles size={13} className="text-indigo-500 animate-pulse" />
                     Ingia / Sajili Bila Nenosiri (Email Link)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActivePolicyDoc('terms');
+                    }}
+                    className="text-[11px] font-bold text-slate-400 hover:text-slate-600 hover:underline cursor-pointer transition-all flex items-center justify-center gap-1"
+                  >
+                    <ShieldCheck size={12} className="text-emerald-600" />
+                    Sheria za Kuingia na Usalama wa Akaunti
                   </button>
                 </div>
               </>
@@ -2119,6 +2174,57 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Floating WhatsApp Channel Button */}
+      <AnimatePresence>
+        {showWhatsAppFloating && activeView !== 'reader' && (
+          <motion.div
+            id="floating-whatsapp-container"
+            initial={{ opacity: 0, y: 50, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.8 }}
+            transition={{
+              type: "spring",
+              stiffness: 260,
+              damping: 20,
+              delay: 0.3
+            }}
+            className={`fixed ${showCookieConsent ? 'bottom-36 md:bottom-6' : 'bottom-6'} left-3 sm:left-6 max-w-[calc(100vw-1.5rem)] z-40 flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full p-1.5 shadow-2xl shadow-emerald-600/40 border border-emerald-400/40 transition-all duration-500 animate-bounce-in-up`}
+          >
+            <a
+              href="https://whatsapp.com/channel/0029Vb7zr5U0AgWJSliYQe2Q"
+              target="_blank"
+              rel="noopener noreferrer"
+              id="floating-whatsapp-btn"
+              className="group flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 text-xs font-extrabold text-white transition-all min-w-0"
+              title="Jiunge na WhatsApp Channel ya Lupanulla Elimu Hub"
+            >
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white"></span>
+              </span>
+              <MessageCircle size={17} className="text-white shrink-0 fill-current" />
+              <span className="hidden sm:inline-block tracking-tight whitespace-nowrap">WhatsApp Channel:</span>
+              <span className="bg-white/20 px-2 sm:px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-white group-hover:bg-white group-hover:text-emerald-700 transition-colors whitespace-nowrap">
+                <span className="whatsapp-btn-label-full">Jiunge Sasa</span>
+                <span className="whatsapp-btn-label-short">Jiunge</span>
+              </span>
+            </a>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                setShowWhatsAppFloating(false);
+              }}
+              className="p-1.5 hover:bg-white/20 rounded-full text-white/80 hover:text-white transition-colors cursor-pointer"
+              title="Funga kitufe hiki cha WhatsApp"
+            >
+              <X size={14} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Cookie Consent Banner */}
       {showCookieConsent && (

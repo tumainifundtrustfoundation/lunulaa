@@ -9,17 +9,19 @@
 /* Custom App Themes configuration */
 
 :root, .theme-tanzania-forest {
-  --color-bg: #f5fcf8; /* Calming forest-tinted pale green */
+  color-scheme: light;
+  --color-bg: #fcfaf5; /* Warm, rich Ivory paper canvas */
   --color-card: #ffffff;
   --color-text: #0b2516; /* Deep dark forest pine text */
   --color-text-muted: #3d5e4a; /* Medium foliage green-gray */
-  --color-primary: #10b981; /* Emerald green (Tanzania Forest core teal/green) */
-  --color-primary-hover: #059669; /* Slightly deeper emerald green */
-  --color-primary-light: #ecfdf5; /* Emerald 50 soft background */
-  --color-border: #e2f2e7; /* Light mint/forest-border lines */
+  --color-primary: #059669; /* Emerald forest green (Tanzania Forest core) */
+  --color-primary-hover: #047857; /* Slightly deeper emerald green */
+  --color-primary-light: #f1f8f3; /* Light ivory-tinted mint background */
+  --color-border: #e4ebe5; /* Light mint/ivory border lines */
 }
 
 .theme-night-mode {
+  color-scheme: dark;
   --color-bg: #090e17; /* Deep safe slate/charcoal background */
   --color-card: #111827; /* Dark slate gray container backgrounds */
   --color-text: #f3f4f6; /* Bright crisp easy-to-read slate-50 text */
@@ -31,6 +33,7 @@
 }
 
 .theme-high-contrast {
+  color-scheme: dark;
   --color-bg: #000000; /* Pure deep black background */
   --color-card: #000000; /* Pure deep black card background */
   --color-text: #ffffff; /* Pure extreme white text */
@@ -41,10 +44,47 @@
   --color-border: #ffffff; /* Strong white border lines */
 }
 
+/* Smooth global color & background transition for theme switching */
+body, #root, #lupanulla-app,
+.theme-tanzania-forest, .theme-night-mode, .theme-high-contrast,
+.theme-tanzania-forest .bg-white, .theme-night-mode .bg-white, .theme-high-contrast .bg-white,
+.theme-tanzania-forest input, .theme-night-mode input, .theme-high-contrast input,
+.theme-tanzania-forest select, .theme-night-mode select, .theme-high-contrast select,
+.theme-tanzania-forest textarea, .theme-night-mode textarea, .theme-high-contrast textarea,
+.theme-tanzania-forest .border, .theme-night-mode .border, .theme-high-contrast .border,
+.theme-tanzania-forest h1, .theme-night-mode h1, .theme-high-contrast h1,
+.theme-tanzania-forest h2, .theme-night-mode h2, .theme-high-contrast h2,
+.theme-tanzania-forest h3, .theme-night-mode h3, .theme-high-contrast h3 {
+  transition: background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.45s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* Force overrides on the root or active container element */
 .theme-tanzania-forest, .theme-night-mode, .theme-high-contrast {
   background-color: var(--color-bg) !important;
   color: var(--color-text) !important;
+}
+
+/* Global theme transition helper class */
+body.theme-transitioning,
+body.theme-transitioning *,
+body.theme-transitioning *::before,
+body.theme-transitioning *::after {
+  transition: background-color 0.45s cubic-bezier(0.4, 0, 0.2, 1) !important,
+              color 0.45s cubic-bezier(0.4, 0, 0.2, 1) !important,
+              border-color 0.45s cubic-bezier(0.4, 0, 0.2, 1) !important,
+              box-shadow 0.45s cubic-bezier(0.4, 0, 0.2, 1) !important,
+              fill 0.45s cubic-bezier(0.4, 0, 0.2, 1) !important,
+              stroke 0.45s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Smooth browser View Transitions API integration */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.45s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Override background colors of cards, inputs, and common containers */
@@ -174,6 +214,29 @@
   animation-play-state: paused;
 }
 
+/* Subtle bounce-in-up entrance animation */
+@keyframes bounceInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.9);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.02);
+  }
+  80% {
+    transform: translateY(2px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-bounce-in-up {
+  animation: bounceInUp 0.8s cubic-bezier(0.215, 0.61, 0.355, 1) both;
+}
+
 /* Specifically style for clean, readable document printing */
 @media print {
   /* Hide all interactive components and layout scaffolding */
@@ -197,6 +260,24 @@
     padding: 0 !important;
     margin: 0 !important;
     background: white !important;
+  }
+}
+
+/* Floating WhatsApp button responsive label rules */
+#floating-whatsapp-btn .whatsapp-btn-label-full {
+  display: inline;
+}
+
+#floating-whatsapp-btn .whatsapp-btn-label-short {
+  display: none;
+}
+
+@media (max-width: 380px) {
+  #floating-whatsapp-btn .whatsapp-btn-label-full {
+    display: none !important;
+  }
+  #floating-whatsapp-btn .whatsapp-btn-label-short {
+    display: inline !important;
   }
 }
 

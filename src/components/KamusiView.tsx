@@ -1,128 +1,250 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Book, 
   Search, 
-  HelpCircle, 
+  Filter,
   CheckCircle, 
-  ArrowRight,
-  Award
+  Sparkles,
+  Bookmark,
+  ChevronDown
 } from 'lucide-react';
-
-interface DictionaryWord {
-  word: string;
-  translation: string;
-  definition: string;
-  subject: string;
-  example: string;
-}
+import { KAMUSI_WORDS_1000, DictionaryWord } from '../data/kamusiData';
 
 export default function KamusiView() {
   const [searchQuery, setSearchQuery] = useState('');
-  
-  const words: DictionaryWord[] = [
-    {
-      word: 'Velocity',
-      translation: 'Kasi mwelekeo',
-      definition: 'The rate of change of displacement of an object. (Kasi ya mwendo wa kitu katika mwelekeo maalum).',
-      subject: 'Physics',
-      example: 'The car has a velocity of 20 m/s due East.'
-    },
-    {
-      word: 'Photosynthesis',
-      translation: 'Usanisinuru',
-      definition: 'The process by which green plants manufacture their own food using sunlight, water, and carbon dioxide. (Mchakato wa mimea ya kijani kujitengenezea chakula kwa kutumia mwanga wa jua, maji, na hewa ya ukaa).',
-      subject: 'Biology',
-      example: 'Photosynthesis takes place in the chloroplasts of plant leaves.'
-    },
-    {
-      word: 'Equation',
-      translation: 'Mlinganyo',
-      definition: 'A mathematical statement showing that two expressions are equal using the equal (=) sign. (Msemo wa kihisabati unaoonyesha kuwa pande mbili zinafanana kwa kutumia alama ya sawa).',
-      subject: 'Mathematics',
-      example: 'Solve the linear equation: 2x + 4 = 10.'
-    },
-    {
-      word: 'Sovereignty',
-      translation: 'Uandishi / Mamlaka Kamili',
-      definition: 'The supreme power or authority of a state to govern itself. (Mamlaka makuu na ya mwisho ya nchi kujitawala yenyewe bila kuingiliwa kati).',
-      subject: 'Civics',
-      example: 'Tanzania attained her full sovereignty in 1961.'
-    },
-    {
-      word: 'Metabolism',
-      translation: 'Metaboliki / Mmeng`enyo wa ndani',
-      definition: 'Chemical processes that occur within a living organism in order to maintain life. (Mifumo yote ya kemikali mwilini inayovunja na kujenga seli ili kuwezesha uhai).',
-      subject: 'Chemistry / Biology',
-      example: 'Thyroid hormones regulate the body`s rate of metabolism.'
-    }
-  ];
+  const [selectedSubject, setSelectedSubject] = useState<string>('Zote');
+  const [selectedLetter, setSelectedLetter] = useState<string>('Zote');
+  const [visibleCount, setVisibleCount] = useState<number>(24);
 
-  const filteredWords = words.filter(w => 
-    w.word.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    w.translation.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    w.definition.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const subjects = useMemo(() => {
+    const list = Array.from(new Set(KAMUSI_WORDS_1000.map(w => w.subject)));
+    return ['Zote', ...list.sort()];
+  }, []);
+
+  const alphabet = useMemo(() => {
+    return ['Zote', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
+  }, []);
+
+  const filteredWords = useMemo(() => {
+    return KAMUSI_WORDS_1000.filter(item => {
+      // Subject Filter
+      if (selectedSubject !== 'Zote' && item.subject !== selectedSubject) {
+        return false;
+      }
+
+      // Letter Filter
+      if (selectedLetter !== 'Zote' && !item.word.toUpperCase().startsWith(selectedLetter)) {
+        return false;
+      }
+
+      // Search Filter
+      if (searchQuery.trim() !== '') {
+        const q = searchQuery.toLowerCase();
+        return (
+          item.word.toLowerCase().includes(q) ||
+          item.translation.toLowerCase().includes(q) ||
+          item.definition.toLowerCase().includes(q) ||
+          item.subject.toLowerCase().includes(q)
+        );
+      }
+
+      return true;
+    });
+  }, [searchQuery, selectedSubject, selectedLetter]);
+
+  const visibleWords = useMemo(() => {
+    return filteredWords.slice(0, visibleCount);
+  }, [filteredWords, visibleCount]);
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => prev + 24);
+  };
 
   return (
-    <div id="kamusi-view" className="space-y-8 animate-fade-in text-slate-800 bg-slate-50 max-w-4xl mx-auto">
+    <div id="kamusi-view" className="space-y-8 animate-fade-in text-slate-800 bg-slate-50 max-w-5xl mx-auto pb-16">
       
-      <section className="bg-gradient-to-r from-cyan-600 to-indigo-950 p-6 rounded-3xl text-white shadow-md relative overflow-hidden border border-cyan-500/10 text-center sm:text-left">
+      {/* Header Banner */}
+      <section className="bg-gradient-to-r from-cyan-700 via-indigo-900 to-slate-950 p-6 sm:p-8 rounded-3xl text-white shadow-xl relative overflow-hidden border border-cyan-500/20">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]"></div>
-        <div className="relative z-10 space-y-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-200 text-xs font-bold uppercase tracking-wider">
-            <Book size={12} /> Kamusi ya Taaluma
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-display font-extrabold uppercase">Kamusi ya Lupanulla (Academic Dictionary)</h1>
-          <p className="text-slate-200 text-xs leading-relaxed max-w-xl">
-            Tafuta maana na tafsiri sahihi ya msamiati wa masomo ya sayansi na jamii kwa lugha zote mbili za Kiingereza na Kiswahili ili kurahisisha uelewa wako.
+        <div className="relative z-10 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-cyan-500/20 text-cyan-200 text-xs font-extrabold uppercase tracking-wider border border-cyan-400/20">
+              <Book size={14} /> Kamusi Kuu ya Taaluma
+            </span>
+            <span className="inline-flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider">
+              <Sparkles size={12} /> Msamiati: {KAMUSI_WORDS_1000.length.toLocaleString()} Maneno
+            </span>
+          </div>
+          
+          <h1 className="text-2xl sm:text-4xl font-display font-black uppercase tracking-tight text-white">
+            Kamusi ya Masomo Lupanulla
+          </h1>
+          <p className="text-slate-200 text-xs sm:text-sm leading-relaxed max-w-2xl font-medium">
+            Tafuta maana, tafsiri rasmi ya Kiswahili, na mifano ya matumizi ya msamiati zaidi ya <strong className="text-cyan-300 font-bold">1,000</strong> katika masomo ya Sayansi, Hisabati, Jamii, na Lugha kwa mtaala wa NECTA.
           </p>
         </div>
       </section>
 
-      {/* Dictionary search */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
+      {/* Search & Filter Controls */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-5">
+        {/* Search Bar */}
         <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-            <Search size={18} />
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+            <Search size={20} />
           </div>
           <input 
             type="text" 
-            placeholder="Tafuta msamiati au tafsiri (Mfano: Velocity, Usanisinuru, Equation)..."
+            placeholder="Tafuta msamiati au tafsiri (Mfano: Velocity, Photosynthesis, Equation, Mfumo)..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 pl-10 pr-4 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500/40 text-slate-800 placeholder-slate-400"
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setVisibleCount(24);
+            }}
+            className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 pl-11 pr-4 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500/40 text-slate-800 placeholder-slate-400 shadow-inner transition-all"
           />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setVisibleCount(24);
+              }}
+              className="absolute inset-y-0 right-0 pr-4 flex items-center text-xs font-bold text-slate-400 hover:text-slate-700"
+            >
+              Futa
+            </button>
+          )}
+        </div>
+
+        {/* Subject Filter Pills */}
+        <div className="space-y-2">
+          <label className="text-xs font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <Filter size={13} className="text-cyan-600" /> Chagua Somo:
+          </label>
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {subjects.map((sub) => (
+              <button
+                key={sub}
+                onClick={() => {
+                  setSelectedSubject(sub);
+                  setVisibleCount(24);
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all ${
+                  selectedSubject === sub 
+                    ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30' 
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {sub}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Alphabet Filter (A-Z) */}
+        <div className="space-y-2 pt-1 border-t border-slate-100">
+          <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+            Tafuta kwa Herufi ya Kuanzia (A - Z):
+          </label>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {alphabet.map((letter) => (
+              <button
+                key={letter}
+                onClick={() => {
+                  setSelectedLetter(letter);
+                  setVisibleCount(24);
+                }}
+                className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all ${
+                  selectedLetter === letter 
+                    ? 'bg-slate-900 text-white shadow-sm' 
+                    : 'bg-slate-100 text-slate-600 hover:bg-cyan-50 hover:text-cyan-700'
+                }`}
+              >
+                {letter}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Dictionary Word Cards */}
-      <div className="space-y-4">
-        {filteredWords.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2">
-            {filteredWords.map((item) => (
-              <div key={item.word} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 flex flex-col justify-between hover:border-cyan-300 hover:shadow-md transition-all">
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-[10px] font-bold">
-                    <span className="text-cyan-600 uppercase">{item.subject}</span>
-                    <span className="bg-slate-100 text-slate-500 px-2.5 py-0.5 rounded-full">MSAMIATI</span>
-                  </div>
-                  <h3 className="font-display font-extrabold text-slate-950 text-lg sm:text-xl uppercase leading-none">{item.word}</h3>
-                  <p className="font-bold text-cyan-600 text-sm">{item.translation}</p>
-                  <p className="text-slate-500 text-xs leading-relaxed pt-1">{item.definition}</p>
-                </div>
+      {/* Results Header Summary */}
+      <div className="flex items-center justify-between px-1">
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+          Yalioonekana: <span className="text-slate-900 font-extrabold">{filteredWords.length.toLocaleString()}</span> kati ya {KAMUSI_WORDS_1000.length.toLocaleString()} maneno
+        </p>
+        {(selectedSubject !== 'Zote' || selectedLetter !== 'Zote' || searchQuery !== '') && (
+          <button
+            onClick={() => {
+              setSelectedSubject('Zote');
+              setSelectedLetter('Zote');
+              setSearchQuery('');
+              setVisibleCount(24);
+            }}
+            className="text-xs font-extrabold text-cyan-600 hover:underline"
+          >
+            Onyesha Yote
+          </button>
+        )}
+      </div>
 
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[11px] text-slate-500 leading-relaxed font-semibold">
-                  <span className="font-bold text-slate-800">Mfano:</span> &quot;{item.example}&quot;
+      {/* Dictionary Word Cards Grid */}
+      <div className="space-y-6">
+        {visibleWords.length > 0 ? (
+          <>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {visibleWords.map((item, idx) => (
+                <div 
+                  key={`${item.word}-${idx}`} 
+                  className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3 flex flex-col justify-between hover:border-cyan-400 hover:shadow-md transition-all group"
+                >
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-[10px] font-extrabold">
+                      <span className="px-2.5 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200/50 uppercase tracking-wider">
+                        {item.subject}
+                      </span>
+                      <Bookmark size={14} className="text-slate-300 group-hover:text-cyan-500 transition-colors" />
+                    </div>
+
+                    <div>
+                      <h3 className="font-display font-black text-slate-950 text-base sm:text-lg uppercase tracking-tight leading-tight group-hover:text-cyan-700 transition-colors">
+                        {item.word}
+                      </h3>
+                      <p className="font-bold text-cyan-700 text-xs sm:text-sm mt-0.5">
+                        {item.translation}
+                      </p>
+                    </div>
+
+                    <p className="text-slate-600 text-xs leading-relaxed pt-1 font-medium">
+                      {item.definition}
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-[11px] text-slate-600 leading-relaxed font-medium">
+                    <span className="font-extrabold text-slate-800 uppercase tracking-wider text-[10px] block mb-0.5">Mfano wa Matumizi:</span>
+                    &quot;{item.example}&quot;
+                  </div>
                 </div>
+              ))}
+            </div>
+
+            {/* Load More Button */}
+            {visibleCount < filteredWords.length && (
+              <div className="text-center pt-6">
+                <button
+                  onClick={handleLoadMore}
+                  className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-extrabold px-6 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all cursor-pointer group"
+                >
+                  <span>Onyesha Maneno Zaidi (+24)</span>
+                  <ChevronDown size={16} className="group-hover:translate-y-0.5 transition-transform" />
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         ) : (
           <div className="bg-white border border-slate-200 rounded-3xl p-10 text-center py-16 space-y-3 shadow-sm">
-            <Book size={32} className="mx-auto text-slate-300" />
-            <h4 className="font-bold text-slate-900 text-xs sm:text-sm uppercase">Neno halikupatikana bado</h4>
-            <p className="text-slate-400 text-xs max-w-xs mx-auto leading-relaxed">
-              Msamiati ulioandika haupo kwenye maktaba yetu fupi ya kamusi kwa sasa. Unaweza kumuuliza msaidizi wetu wa akili ya bandia **Lupanulla AI** kwa tafsiri sahihi!
+            <Book size={36} className="mx-auto text-slate-300" />
+            <h4 className="font-extrabold text-slate-900 text-sm uppercase">Hakuna msamiati uliopatikana</h4>
+            <p className="text-slate-500 text-xs max-w-sm mx-auto leading-relaxed font-medium">
+              Jaribu kubadilisha herufi, kuteua somo lingine au kufuta neno ulilotafuta. Msaidizi wetu **Lupanulla AI** yupo tayari kukusaidia na tafsiri yoyote pia!
             </p>
           </div>
         )}

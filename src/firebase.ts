@@ -1833,3 +1833,46 @@ export const deleteStudyEvent = async (eventId: string): Promise<void> => {
     throw error;
   }
 };
+
+/**
+ * Toggle Completed Examination Paper status for a student in Firestore
+ */
+export const toggleCompletedExam = async (userId: string, docId: string): Promise<boolean> => {
+  const path = 'completed_exams';
+  try {
+    const compId = `${userId}_${docId}`;
+    const docRef = doc(db, path, compId);
+    const snap = await getDoc(docRef);
+
+    if (snap.exists()) {
+      await deleteDoc(docRef);
+      return false; // Uncompleted
+    } else {
+      await setDoc(docRef, {
+        userId,
+        docId,
+        completedAt: Date.now()
+      });
+      return true; // Completed
+    }
+  } catch (err: any) {
+    console.error('toggleCompletedExam error:', err);
+    return false;
+  }
+};
+
+/**
+ * Fetch all completed examination paper IDs for a user
+ */
+export const fetchUserCompletedExams = async (userId: string): Promise<string[]> => {
+  const path = 'completed_exams';
+  try {
+    const colRef = collection(db, path);
+    const q = query(colRef, where('userId', '==', userId));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => d.data().docId as string);
+  } catch (err: any) {
+    console.warn('fetchUserCompletedExams warning:', err);
+    return [];
+  }
+};

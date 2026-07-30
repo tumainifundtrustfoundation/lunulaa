@@ -40,6 +40,8 @@ import {
   fetchExamResults, 
   toggleBookmark as toggleBookmarkFirestore, 
   fetchUserBookmarks, 
+  toggleCompletedExam,
+  fetchUserCompletedExams,
   saveOrder,
   saveDocumentMetadata,
   updateDocument,
@@ -74,6 +76,7 @@ export default function MitihaniView({
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('subjectYear'); // 'subjectYear', 'newest', 'views', 'alphabetical'
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>([]);
+  const [completedExamIds, setCompletedExamIds] = useState<string[]>([]);
   const [showTimer, setShowTimer] = useState(false);
 
   // Quick View states for PDF Preview Modal
@@ -934,7 +937,27 @@ export default function MitihaniView({
         console.error(e);
       }
     };
+
+    const checkCompletedExams = async () => {
+      if (!userProfile?.uid) {
+        const storedCompleted = localStorage.getItem('lupa_completed_exams');
+        if (storedCompleted) {
+          try {
+            setCompletedExamIds(JSON.parse(storedCompleted));
+          } catch (e) {}
+        }
+        return;
+      }
+      try {
+        const completed = await fetchUserCompletedExams(userProfile.uid);
+        setCompletedExamIds(completed);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
     checkBookmarks();
+    checkCompletedExams();
   }, [userProfile?.uid]);
 
   const loadDocs = async () => {
@@ -994,6 +1017,38 @@ export default function MitihaniView({
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleToggleCompletedExam = async (doc: DocumentMetadata, e: React.MouseEvent) => {
+    e.stopPropagation(); // Avoid navigating card click
+    
+    const isCurrentlyCompleted = completedExamIds.includes(doc.id);
+    let updated: string[];
+    
+    if (isCurrentlyCompleted) {
+      updated = completedExamIds.filter(id => id !== doc.id);
+    } else {
+      updated = [...completedExamIds, doc.id];
+    }
+    setCompletedExamIds(updated);
+
+    if (!userProfile?.uid) {
+      localStorage.setItem('lupa_completed_exams', JSON.stringify(updated));
+      return;
+    }
+
+    try {
+      const isNowCompleted = await toggleCompletedExam(userProfile.uid, doc.id);
+      if (isNowCompleted !== !isCurrentlyCompleted) {
+        if (isNowCompleted) {
+          setCompletedExamIds(prev => [...prev, doc.id]);
+        } else {
+          setCompletedExamIds(prev => prev.filter(id => id !== doc.id));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to toggle completed exam:', err);
     }
   };
 
@@ -1062,90 +1117,101 @@ export default function MitihaniView({
     
     if (sub.includes('math') || sub.includes('hisabati')) {
       return {
-        gradient: 'from-blue-600 to-indigo-800',
+        gradient: 'from-blue-700 via-indigo-800 to-slate-900',
         accentColor: 'text-blue-200',
         icon: Compass,
+        image: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?auto=format&fit=crop&w=400&q=80',
         pattern: 'bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:12px_12px]'
       };
     }
     if (sub.includes('physics') || sub.includes('fizikia')) {
       return {
-        gradient: 'from-violet-700 to-indigo-950',
+        gradient: 'from-violet-800 via-indigo-900 to-slate-950',
         accentColor: 'text-indigo-200',
         icon: Atom,
+        image: 'https://images.unsplash.com/photo-1636466497217-26a8cbeaf0aa?auto=format&fit=crop&w=400&q=80',
         pattern: 'bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] [background-size:10px_10px]'
       };
     }
     if (sub.includes('chemistry') || sub.includes('kemia')) {
       return {
-        gradient: 'from-teal-600 to-emerald-950',
+        gradient: 'from-teal-700 via-emerald-900 to-slate-950',
         accentColor: 'text-teal-200',
         icon: Sparkles,
+        image: 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=400&q=80',
         pattern: 'bg-[radial-gradient(#ffffff0c_1.5px,transparent_1.5px)] [background-size:16px_16px]'
       };
     }
     if (sub.includes('biology') || sub.includes('biolojia')) {
       return {
-        gradient: 'from-emerald-600 to-teal-900',
+        gradient: 'from-emerald-700 via-teal-900 to-slate-950',
         accentColor: 'text-emerald-100',
         icon: GraduationCap,
+        image: 'https://images.unsplash.com/photo-1530026405186-ed1f139313f8?auto=format&fit=crop&w=400&q=80',
         pattern: 'bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:8px_8px]'
       };
     }
     if (sub.includes('history') || sub.includes('historia')) {
       return {
-        gradient: 'from-amber-800 to-red-950',
+        gradient: 'from-amber-800 via-red-900 to-slate-950',
         accentColor: 'text-amber-200',
         icon: FileText,
+        image: 'https://images.unsplash.com/photo-1461360370896-922624d12aa1?auto=format&fit=crop&w=400&q=80',
         pattern: 'bg-[repeating-linear-gradient(45deg,#ffffff03_0px,#ffffff03_2px,transparent_2px,transparent_10px)]'
       };
     }
     if (sub.includes('geography') || sub.includes('jiografia')) {
       return {
-        gradient: 'from-sky-600 to-blue-900',
+        gradient: 'from-sky-700 via-blue-900 to-slate-950',
         accentColor: 'text-sky-200',
         icon: Globe,
+        image: 'https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=400&q=80',
         pattern: 'bg-[radial-gradient(#ffffff0d_1.5px,transparent_1.5px)] [background-size:14px_14px]'
       };
     }
     if (sub.includes('civics') || sub.includes('uraia')) {
       return {
-        gradient: 'from-red-600 to-rose-950',
+        gradient: 'from-red-700 via-rose-900 to-slate-950',
         accentColor: 'text-red-200',
         icon: Scale,
-        pattern: 'bg-[linear-gradient(45deg,#ffffff04_25%,transparent_25%,transparent_75%,#ffffff04_75%,#ffffff04),linear-gradient(45deg,#ffffff04_25%,transparent_25%,transparent_75%,#ffffff04_75%,#ffffff04)] [background-size:16px_16px] [background-position:0_0,8px_8px]'
+        image: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=400&q=80',
+        pattern: 'bg-[linear-gradient(45deg,#ffffff04_25%,transparent_25%,transparent_75%,#ffffff04_75%,#ffffff04)] [background-size:16px_16px] [background-position:0_0,8px_8px]'
       };
     }
     if (sub.includes('english') || sub.includes('kiingereza')) {
       return {
-        gradient: 'from-fuchsia-700 to-rose-950',
+        gradient: 'from-fuchsia-800 via-purple-950 to-slate-950',
         accentColor: 'text-fuchsia-200',
         icon: BookOpen,
+        image: 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=400&q=80',
         pattern: 'bg-[repeating-linear-gradient(to_right,#ffffff03_0px,#ffffff03_1px,transparent_1px,transparent_12px)]'
       };
     }
     if (sub.includes('kiswahili')) {
       return {
-        gradient: 'from-orange-600 to-amber-950',
+        gradient: 'from-orange-700 via-amber-900 to-slate-950',
         accentColor: 'text-orange-200',
         icon: BookOpen,
+        image: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=400&q=80',
         pattern: 'bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:10px_10px]'
       };
     }
     if (sub.includes('commerce') || sub.includes('biashara') || sub.includes('bookkeeping') || sub.includes('uhasibu')) {
       return {
-        gradient: 'from-cyan-600 to-indigo-950',
+        gradient: 'from-cyan-700 via-indigo-900 to-slate-950',
         accentColor: 'text-cyan-200',
         icon: FileText,
+        image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=400&q=80',
         pattern: 'bg-[linear-gradient(to_bottom,#ffffff06_1px,transparent_1px)] [background-size:10px_8px]'
       };
     }
     
     // Default fallback
     return {
-      gradient: 'from-slate-600 to-slate-900',
+      gradient: 'from-slate-700 via-slate-800 to-slate-950',
       accentColor: 'text-slate-300',
       icon: BookOpen,
+      image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=400&q=80',
       pattern: 'bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:12px_12px]'
     };
   };
@@ -1153,45 +1219,71 @@ export default function MitihaniView({
   const renderBookCover = (doc: DocumentMetadata) => {
     const subject = getDocSubject(doc);
     const theme = getSubjectTheme(subject);
-    const IconComponent = theme.icon;
+    const IconComponent = theme.icon || BookOpen;
     
     const year = doc.year || 2024;
     const typeLabel = doc.type || (doc.tags.includes('NECTA') ? 'NECTA' : 'Mock');
+    const imageUrl = (doc as any).imageUrl || (doc as any).coverImage || theme.image || null;
 
     return (
       <div className={`relative w-[95px] h-[135px] sm:w-[105px] sm:h-[145px] rounded-2xl overflow-hidden shadow-lg flex-shrink-0 bg-gradient-to-br ${theme.gradient} flex flex-col justify-between p-3 text-white select-none group-hover:scale-[1.03] transition-transform duration-300 border border-white/10`}>
+        {/* Subject Background Image with Fallback handling */}
+        {imageUrl ? (
+          <img 
+            src={imageUrl} 
+            alt={subject} 
+            className="absolute inset-0 w-full h-full object-cover opacity-35 mix-blend-overlay group-hover:scale-110 transition-transform duration-500 pointer-events-none" 
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              // Hide image if broken/unavailable so default Lucide icon fallback is cleanly displayed
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : null}
+
         {/* Shine overlay */}
-        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/20 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-white/5 to-white/20 pointer-events-none" />
         
         {/* Book spine simulation on the left */}
-        <div className="absolute top-0 bottom-0 left-0 w-2 bg-black/25 rounded-l-2xl blur-[0.5px]" />
-        <div className="absolute top-0 bottom-0 left-[1px] w-[0.5px] bg-white/15 rounded-l-2xl" />
+        <div className="absolute top-0 bottom-0 left-0 w-2 bg-black/35 rounded-l-2xl blur-[0.5px] z-10" />
+        <div className="absolute top-0 bottom-0 left-[1px] w-[0.5px] bg-white/20 rounded-l-2xl z-10" />
 
         {/* Diagonal stripes or background pattern */}
-        <div className={`absolute inset-0 opacity-10 pointer-events-none ${theme.pattern}`} />
+        <div className={`absolute inset-0 opacity-15 pointer-events-none ${theme.pattern}`} />
 
         {/* Header/Badge on cover */}
         <div className="relative z-10 flex justify-between items-start">
-          <span className="text-[7.5px] font-black uppercase tracking-wider bg-white/15 backdrop-blur-xs px-1.5 py-0.5 rounded border border-white/10">
+          <span className="text-[7.5px] font-black uppercase tracking-wider bg-black/40 backdrop-blur-xs px-1.5 py-0.5 rounded border border-white/20 shadow-xs">
             {typeLabel}
           </span>
-          <span className="text-[8px] font-mono font-black text-white/90">
-            {year}
-          </span>
+          {completedExamIds.includes(doc.id) ? (
+            <span className="text-[8px] font-extrabold text-emerald-300 bg-emerald-950/80 px-1 py-0.5 rounded border border-emerald-400/40 backdrop-blur-xs flex items-center gap-0.5" title="Mtihani huu umekamilika">
+              <CheckCircle2 size={9} className="text-emerald-400" />
+              ✓
+            </span>
+          ) : (
+            <span className="text-[8px] font-mono font-black text-white/90 bg-black/30 px-1 rounded backdrop-blur-xs">
+              {year}
+            </span>
+          )}
         </div>
 
-        {/* Central subject graphic */}
+        {/* Central subject graphic with Lucide-react Icon Fallback */}
         <div className="relative z-10 flex flex-col items-center justify-center my-auto py-1 text-center">
-          <div className="w-8 h-8 rounded-xl bg-white/10 backdrop-blur-xs flex items-center justify-center shadow-inner border border-white/10 mb-1 group-hover:rotate-6 transition-transform">
-            <IconComponent size={14} className={theme.accentColor} />
+          <div className="w-8 h-8 rounded-xl bg-black/40 backdrop-blur-md flex items-center justify-center shadow-lg border border-white/20 mb-1 group-hover:rotate-6 transition-transform">
+            {IconComponent ? (
+              <IconComponent size={14} className={theme.accentColor || 'text-cyan-200'} />
+            ) : (
+              <BookOpen size={14} className="text-cyan-200" />
+            )}
           </div>
-          <span className="text-[8px] font-black uppercase tracking-wider leading-tight max-w-[85px] line-clamp-2 text-white">
+          <span className="text-[8.5px] font-black uppercase tracking-wider leading-tight max-w-[85px] line-clamp-2 text-white drop-shadow-md">
             {subject.replace(/\s*\(.*\)/, '')}
           </span>
         </div>
 
         {/* Footer info/Lupanulla seal */}
-        <div className="relative z-10 border-t border-white/15 pt-1.5 text-[6px] font-black uppercase tracking-widest text-white/60 text-center">
+        <div className="relative z-10 border-t border-white/20 pt-1.5 text-[6px] font-black uppercase tracking-widest text-white/80 text-center drop-shadow-xs">
           ELIMU HUB
         </div>
       </div>
@@ -1863,8 +1955,24 @@ export default function MitihaniView({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-[10px] text-slate-400 font-bold mt-1.5">
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-[10px] text-slate-400 font-bold mt-1.5 gap-2">
                     <span>{paper.views} views</span>
+                    <button
+                      onClick={(e) => handleToggleCompletedExam(paper, e)}
+                      title={completedExamIds.includes(paper.id) ? "Weka alama kama haujakamilisha" : "Weka alama kama mtihani umekamilika"}
+                      className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold flex items-center gap-1 border transition-all shrink-0 cursor-pointer ${
+                        completedExamIds.includes(paper.id) 
+                          ? 'bg-emerald-500/10 text-emerald-700 border-emerald-300 shadow-2xs' 
+                          : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100 hover:text-slate-700'
+                      }`}
+                    >
+                      <div className={`w-3 h-3 rounded border flex items-center justify-center transition-colors ${
+                        completedExamIds.includes(paper.id) ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 bg-white'
+                      }`}>
+                        {completedExamIds.includes(paper.id) && <CheckCircle size={8} className="stroke-[3]" />}
+                      </div>
+                      <span>{completedExamIds.includes(paper.id) ? 'Imekamilika ✓' : 'Kamilisha'}</span>
+                    </button>
                     <span className="text-cyan-600 flex items-center gap-0.5 font-extrabold">Fungua &rarr;</span>
                   </div>
                 </div>
@@ -2053,12 +2161,31 @@ export default function MitihaniView({
                                   )}
                                 </div>
                                 
-                                <button 
-                                  onClick={(e) => handleToggleBookmark(doc, e)}
-                                  className={`p-1.5 rounded-lg border transition-all shrink-0 ${isBookmarked ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600'}`}
-                                >
-                                  <Bookmark size={13} className={isBookmarked ? 'fill-current' : ''} />
-                                </button>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    onClick={(e) => handleToggleCompletedExam(doc, e)}
+                                    title={completedExamIds.includes(doc.id) ? "Weka alama kama haujakamilisha" : "Weka alama kama mtihani umekamilika"}
+                                    className={`px-2 py-1 rounded-xl text-[10px] font-extrabold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                                      completedExamIds.includes(doc.id) 
+                                        ? 'bg-emerald-500/10 text-emerald-700 border-emerald-300 shadow-2xs' 
+                                        : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100 hover:text-slate-800'
+                                    }`}
+                                  >
+                                    <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                                      completedExamIds.includes(doc.id) ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 bg-white'
+                                    }`}>
+                                      {completedExamIds.includes(doc.id) && <CheckCircle size={10} className="stroke-[3]" />}
+                                    </div>
+                                    <span className="hidden xs:inline">{completedExamIds.includes(doc.id) ? 'Imekamilika' : 'Kamilisha'}</span>
+                                  </button>
+
+                                  <button 
+                                    onClick={(e) => handleToggleBookmark(doc, e)}
+                                    className={`p-1.5 rounded-lg border transition-all shrink-0 ${isBookmarked ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600'}`}
+                                  >
+                                    <Bookmark size={13} className={isBookmarked ? 'fill-current' : ''} />
+                                  </button>
+                                </div>
                               </div>
 
                               <div>
@@ -2148,12 +2275,31 @@ export default function MitihaniView({
                             )}
                           </div>
                           
-                          <button 
-                            onClick={(e) => handleToggleBookmark(doc, e)}
-                            className={`p-1.5 rounded-lg border transition-all shrink-0 ${isBookmarked ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600'}`}
-                          >
-                            <Bookmark size={13} className={isBookmarked ? 'fill-current' : ''} />
-                          </button>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={(e) => handleToggleCompletedExam(doc, e)}
+                              title={completedExamIds.includes(doc.id) ? "Weka alama kama haujakamilisha" : "Weka alama kama mtihani umekamilika"}
+                              className={`px-2 py-1 rounded-xl text-[10px] font-extrabold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                                completedExamIds.includes(doc.id) 
+                                  ? 'bg-emerald-500/10 text-emerald-700 border-emerald-300 shadow-2xs' 
+                                  : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100 hover:text-slate-800'
+                              }`}
+                            >
+                              <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                                completedExamIds.includes(doc.id) ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 bg-white'
+                              }`}>
+                                {completedExamIds.includes(doc.id) && <CheckCircle size={10} className="stroke-[3]" />}
+                              </div>
+                              <span className="hidden xs:inline">{completedExamIds.includes(doc.id) ? 'Imekamilika' : 'Kamilisha'}</span>
+                            </button>
+
+                            <button 
+                              onClick={(e) => handleToggleBookmark(doc, e)}
+                              className={`p-1.5 rounded-lg border transition-all shrink-0 ${isBookmarked ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600'}`}
+                            >
+                              <Bookmark size={13} className={isBookmarked ? 'fill-current' : ''} />
+                            </button>
+                          </div>
                         </div>
 
                         <div>
@@ -2759,19 +2905,37 @@ export default function MitihaniView({
             {/* RIGHT SIDE: Details & Actions */}
             <div className="w-full md:w-1/2 p-6 sm:p-8 flex flex-col h-[60%] md:h-full justify-between overflow-y-auto">
               <div className="space-y-6">
-                {/* Header Badge */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="bg-cyan-100 text-cyan-800 text-[10px] font-black px-2.5 py-1 rounded-lg border border-cyan-200 uppercase tracking-widest">
-                    {quickViewDoc.type || 'NECTA'}
-                  </span>
-                  <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-200">
-                    Mwaka {quickViewDoc.year || 2024}
-                  </span>
-                  {quickViewDoc.tags?.includes('premium') && (
-                    <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2.5 py-1 rounded-lg border border-amber-200 flex items-center gap-0.5">
-                      <Crown size={11} /> PRO
+                {/* Header Badge & Completed Checkbox */}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="bg-cyan-100 text-cyan-800 text-[10px] font-black px-2.5 py-1 rounded-lg border border-cyan-200 uppercase tracking-widest">
+                      {quickViewDoc.type || 'NECTA'}
                     </span>
-                  )}
+                    <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-200">
+                      Mwaka {quickViewDoc.year || 2024}
+                    </span>
+                    {quickViewDoc.tags?.includes('premium') && (
+                      <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-2.5 py-1 rounded-lg border border-amber-200 flex items-center gap-0.5">
+                        <Crown size={11} /> PRO
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={(e) => handleToggleCompletedExam(quickViewDoc, e)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 border transition-all cursor-pointer ${
+                      completedExamIds.includes(quickViewDoc.id) 
+                        ? 'bg-emerald-500/10 text-emerald-700 border-emerald-300 shadow-2xs' 
+                        : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                      completedExamIds.includes(quickViewDoc.id) ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 bg-white'
+                    }`}>
+                      {completedExamIds.includes(quickViewDoc.id) && <CheckCircle size={11} className="stroke-[3]" />}
+                    </div>
+                    <span>{completedExamIds.includes(quickViewDoc.id) ? 'Imekamilika ✓' : 'Weka Alama Imekamilika'}</span>
+                  </button>
                 </div>
 
                 {/* Title */}

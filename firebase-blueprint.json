@@ -282,9 +282,26 @@
         "createdAt": { "type": "integer" }
       },
       "required": ["id", "userId", "title", "date", "isCompleted", "createdAt"]
+    },
+    "CompletedExam": {
+      "title": "Completed Examination",
+      "description": "Log of completed past papers and examinations for a student.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "docId": { "type": "string" },
+        "completedAt": { "type": "integer" }
+      },
+      "required": ["userId", "docId", "completedAt"]
     }
   },
   "firestore": {
+    "/completed_exams/{compId}": {
+      "schema": {
+        "$ref": "#/entities/CompletedExam"
+      },
+      "description": "Log of completed past papers and examinations for a student."
+    },
     "/study_events/{eventId}": {
       "schema": {
         "$ref": "#/entities/StudyEvent"

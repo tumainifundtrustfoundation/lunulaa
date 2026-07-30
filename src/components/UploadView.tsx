@@ -12,7 +12,11 @@ import {
   Sparkles,
   ShieldAlert,
   Loader,
-  Wand2
+  Wand2,
+  Database,
+  HardDrive,
+  RefreshCw,
+  BookOpen
 } from 'lucide-react';
 import { saveDocumentMetadata, getAccessToken, auth } from '../firebase';
 import { DocumentMetadata } from '../types';
@@ -336,12 +340,77 @@ export default function UploadView({ onNavigate, userProfile }: UploadViewProps)
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]"></div>
         <div className="relative z-10 space-y-2">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-200 text-xs font-bold uppercase tracking-wider">
-            <Upload size={12} /> Google Drive Storage Proxy
+            <Upload size={12} /> Firebase Cloud Storage &amp; Sync
           </span>
           <h1 className="text-2xl sm:text-3xl font-display font-extrabold uppercase">Pakia Mtihani au Notisi Mpya</h1>
           <p className="text-slate-200 text-xs leading-relaxed max-w-xl">
-            Shiriki nyenzo zako za elimu (Mitihani, Miongozo, Notisi) na jamii ya Lupanulla. Faili litahifadhiwa Google Drive yetu salama na kurejeshwa hapa.
+            Shiriki nyenzo zako za elimu (Mitihani, Miongozo, Notisi) na jamii ya Lupanulla. Faili zitahifadhiwa salama kwenye <strong>Firebase Storage</strong> na kusawazishwa moja kwa moja kwenye maktaba kuu ya <strong>MitihaniView</strong>.
           </p>
+        </div>
+      </section>
+
+      {/* Storage & Sync Status Assurance Card */}
+      <section className="bg-white border border-cyan-100 rounded-3xl p-5 sm:p-6 shadow-sm relative overflow-hidden space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-cyan-50 border border-cyan-200 text-cyan-600 flex items-center justify-center shrink-0 shadow-inner">
+              <Database size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-display font-extrabold text-sm uppercase text-slate-900">
+                  Hifadhi na Ulandanishi wa Mitihani
+                </h3>
+                <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-emerald-300">
+                  Firebase Cloud Active
+                </span>
+              </div>
+              <p className="text-slate-500 text-xs font-semibold mt-0.5">
+                Mitihani unayopakia inahifadhiwa wapi na inapatikana vipi?
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate('mitihani')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer shadow-sm shrink-0"
+          >
+            <BookOpen size={13} className="text-cyan-400" />
+            <span>Fungua MitihaniView</span>
+            <ArrowRight size={13} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+          {/* Firebase Storage Explanation */}
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0 font-bold mt-0.5">
+              <HardDrive size={16} />
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-bold text-xs text-slate-900 uppercase flex items-center gap-1">
+                1. Hifadhi ya Firebase Storage &amp; Firestore
+              </h4>
+              <p className="text-[11.5px] text-slate-600 leading-relaxed font-medium">
+                Nyaraka na mitihani yote inayopakiwa inahifadhiwa salama kwenye hifadhi ya wingu ya <strong>Firebase Storage</strong> pamoja na kanzidata ya <strong>Cloud Firestore</strong> kwa usalama na upatikanaji wa usiku na mchana.
+              </p>
+            </div>
+          </div>
+
+          {/* Automatic Sync to MitihaniView */}
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-600 border border-cyan-200 flex items-center justify-center shrink-0 font-bold mt-0.5">
+              <RefreshCw size={16} />
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-bold text-xs text-slate-900 uppercase flex items-center gap-1">
+                2. Ulandanishi wa Moja kwa Moja (MitihaniView)
+              </h4>
+              <p className="text-[11.5px] text-slate-600 leading-relaxed font-medium">
+                Mchakato wa kupakia ukikamilika, mtihani au notisi yako inasawazishwa kiotomatiki na kutokea papo hapo kwenye orodha kuu ya <strong>MitihaniView</strong> ili wanafunzi na walimu waweze kuisoma na kuipakua.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 

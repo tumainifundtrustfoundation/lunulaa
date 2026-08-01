@@ -351,6 +351,28 @@ export interface HighlightAnnotation {
   createdAt: number;
 }
 
+export interface PDFPageNote {
+  id: string;
+  userId: string;
+  documentId: string;
+  documentTitle?: string;
+  pageNumber: number;
+  content: string;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export interface VocabularyItem {
+  id: string;
+  userId: string;
+  word: string;
+  definition?: string;
+  contextSentence?: string;
+  documentId?: string;
+  documentTitle?: string;
+  createdAt: number;
+}
+
 export interface UserBookmark {
   id: string;
   userId: string;

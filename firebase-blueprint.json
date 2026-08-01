@@ -293,6 +293,38 @@
         "completedAt": { "type": "integer" }
       },
       "required": ["userId", "docId", "completedAt"]
+    },
+    "PDFPageNote": {
+      "title": "PDF Page Note",
+      "description": "User notes attached to specific pages of a PDF document.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "documentId": { "type": "string" },
+        "documentTitle": { "type": "string" },
+        "pageNumber": { "type": "integer" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "integer" },
+        "updatedAt": { "type": "integer" }
+      },
+      "required": ["id", "userId", "documentId", "pageNumber", "content", "createdAt"]
+    },
+    "VocabularyItem": {
+      "title": "Vocabulary Item",
+      "description": "Personal vocabulary words/phrases saved for revision.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "word": { "type": "string" },
+        "definition": { "type": "string" },
+        "contextSentence": { "type": "string" },
+        "documentId": { "type": "string" },
+        "documentTitle": { "type": "string" },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["id", "userId", "word", "createdAt"]
     }
   },
   "firestore": {
@@ -387,6 +419,18 @@
         "$ref": "#/entities/SystemConfig"
       },
       "description": "Sensitive credentials and third-party configuration keys."
+    },
+    "/pdf_page_notes/{noteId}": {
+      "schema": {
+        "$ref": "#/entities/PDFPageNote"
+      },
+      "description": "User notes attached to specific pages of a PDF document."
+    },
+    "/user_vocabulary/{vocabId}": {
+      "schema": {
+        "$ref": "#/entities/VocabularyItem"
+      },
+      "description": "Personal vocabulary words/phrases saved for revision."
     }
   }
 }

@@ -227,6 +227,20 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
+    // PDF Page Notes collection
+    match /pdf_page_notes/{noteId} {
+      allow read, list: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // User Vocabulary collection
+    match /user_vocabulary/{vocabId} {
+      allow read, list: if isSignedIn() && (resource == null || resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
     // Website News collection
     match /website_news/{newsId} {
       allow read: if true;

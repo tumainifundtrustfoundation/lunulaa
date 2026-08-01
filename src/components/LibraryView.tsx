@@ -56,6 +56,10 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
   const [showPremiumModal, setShowPremiumModal] = useState<boolean>(false);
   const [modalBookTitle, setModalBookTitle] = useState<string>('');
 
+  // Quick Preview Modal State
+  const [quickPreviewDoc, setQuickPreviewDoc] = useState<DocumentMetadata | null>(null);
+  const [previewImageFailed, setPreviewImageFailed] = useState<boolean>(false);
+
   // Toast Notification State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -158,6 +162,32 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
       console.error(e);
       showToast(`Hitilafu imetokea!`);
     }
+  };
+
+  const extractGoogleDriveId = (url: string): string | null => {
+    if (!url) return null;
+    const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+                  url.match(/id=([a-zA-Z0-9_-]+)/) ||
+                  url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    return match ? match[1] : null;
+  };
+
+  const getFirstPageImageUrl = (doc: DocumentMetadata): string | null => {
+    if ((doc as any).thumbnailUrl) return (doc as any).thumbnailUrl;
+    if ((doc as any).coverImage) return (doc as any).coverImage;
+    if ((doc as any).imageUrl) return (doc as any).imageUrl;
+    if (doc.mimeType?.includes('image')) return doc.driveUrl;
+
+    const driveId = extractGoogleDriveId(doc.driveUrl);
+    if (driveId) {
+      return `https://drive.google.com/thumbnail?id=${driveId}&sz=w800`;
+    }
+    return null;
+  };
+
+  const openQuickPreview = (doc: DocumentMetadata) => {
+    setPreviewImageFailed(false);
+    setQuickPreviewDoc(doc);
   };
 
   const handleShare = (doc: DocumentMetadata) => {
@@ -625,10 +655,21 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
                 className="group bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:border-emerald-100 transition-all duration-300 flex flex-col h-full transform hover:-translate-y-1"
               >
                 {/* Visual Thumbnail Frame */}
-                <div className={`h-40 bg-gradient-to-br ${design.bg} relative flex items-center justify-center p-4 overflow-hidden`}>
+                <div 
+                  onClick={() => openQuickPreview(doc)}
+                  className={`h-40 bg-gradient-to-br ${design.bg} relative flex items-center justify-center p-4 overflow-hidden cursor-pointer`}
+                >
                   {/* Dynamic background curves */}
                   <div className="absolute inset-0 opacity-15 mix-blend-overlay pointer-events-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-slate-900 to-transparent scale-150"></div>
                   
+                  {/* Quick Preview Hover Overlay Badge */}
+                  <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-20 backdrop-blur-2xs">
+                    <span className="px-3 py-1.5 bg-white text-slate-900 font-extrabold text-[10px] uppercase tracking-wider rounded-xl shadow-lg flex items-center gap-1.5 transform translate-y-2 group-hover:translate-y-0 transition-transform">
+                      <Eye size={12} className="text-emerald-600" />
+                      Hakiki Haraka
+                    </span>
+                  </div>
+
                   {/* Real Image or Icon Display */}
                   {doc.mimeType?.includes('image') || (doc as any).thumbnailUrl ? (
                     <img 
@@ -707,7 +748,10 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
                     </div>
 
                     {/* Document Title */}
-                    <h3 className="font-sans font-extrabold text-slate-900 text-sm leading-snug line-clamp-2 hover:text-emerald-700 transition-colors">
+                    <h3 
+                      onClick={() => openQuickPreview(doc)}
+                      className="font-sans font-extrabold text-slate-900 text-sm leading-snug line-clamp-2 hover:text-emerald-700 transition-colors cursor-pointer"
+                    >
                       {doc.title}
                     </h3>
 
@@ -739,18 +783,28 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
                     {/* Actions Group */}
                     <div className="grid grid-cols-2 gap-1.5 pt-1">
                       <button
-                        onClick={() => handlePreview(doc)}
-                        className="py-2.5 px-2 bg-gray-50 hover:bg-gray-100 hover:text-emerald-700 text-slate-700 font-black text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm border border-gray-100"
+                        onClick={() => openQuickPreview(doc)}
+                        className="py-2 px-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-black text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                        title="Hakiki Haraka Ukurasa wa Kwanza"
                       >
-                        <Eye size={11} />
+                        <Eye size={11} className="text-emerald-600" />
+                        Hakiki
+                      </button>
+
+                      <button
+                        onClick={() => handlePreview(doc)}
+                        className="py-2 px-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shadow-2xs border border-slate-200"
+                        title="Fungua msomaji wa PDF"
+                      >
+                        <BookOpen size={11} />
                         Soma
                       </button>
                       
                       <button
                         onClick={() => handleDownload(doc)}
-                        className={`py-2.5 px-2 font-black text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shadow-sm ${
+                        className={`py-2 px-1.5 font-black text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 shadow-2xs ${
                           isPremiumBook 
-                            ? 'bg-amber-500 hover:bg-amber-600 text-amber-950 hover:text-amber-950 border border-amber-400' 
+                            ? 'bg-amber-500 hover:bg-amber-600 text-amber-950 border border-amber-400' 
                             : 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500'
                         }`}
                       >
@@ -758,25 +812,26 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
                         Pakua
                       </button>
 
-                      <button
-                        onClick={(e) => handleToggleBookmark(doc, e)}
-                        className={`py-2.5 px-2 font-black text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 border shadow-sm ${
-                          bookmarkedIds.includes(doc.id)
-                            ? 'bg-amber-50 border-amber-100 text-amber-600'
-                            : 'bg-gray-50 border-gray-100 text-slate-700 hover:text-emerald-700'
-                        }`}
-                      >
-                        <Bookmark size={11} fill={bookmarkedIds.includes(doc.id) ? "currentColor" : "none"} />
-                        {bookmarkedIds.includes(doc.id) ? 'Imehifadhiwa' : 'Hifadhi'}
-                      </button>
-
-                      <button
-                        onClick={() => handleShare(doc)}
-                        className="py-2.5 px-2 bg-gray-50 hover:bg-gray-100 hover:text-indigo-700 text-slate-700 font-black text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 border border-gray-100 shadow-sm"
-                      >
-                        <Share2 size={11} />
-                        Gawa
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => handleToggleBookmark(doc, e)}
+                          className={`flex-1 py-2 px-1 font-black text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1 border shadow-2xs ${
+                            bookmarkedIds.includes(doc.id)
+                              ? 'bg-amber-50 border-amber-100 text-amber-600'
+                              : 'bg-gray-50 border-gray-100 text-slate-700 hover:text-emerald-700'
+                          }`}
+                        >
+                          <Bookmark size={11} fill={bookmarkedIds.includes(doc.id) ? "currentColor" : "none"} />
+                          {bookmarkedIds.includes(doc.id) ? 'Saved' : 'Hifadhi'}
+                        </button>
+                        <button
+                          onClick={() => handleShare(doc)}
+                          className="p-2 bg-gray-50 hover:bg-gray-100 text-slate-600 rounded-xl border border-gray-100 shadow-2xs cursor-pointer"
+                          title="Gawa Nyaraka"
+                        >
+                          <Share2 size={11} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -958,6 +1013,245 @@ export default function LibraryView({ onNavigate, userProfile }: LibraryViewProp
                 <ArrowRight size={14} />
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* QUICK PREVIEW MODAL */}
+      {quickPreviewDoc && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-3 sm:p-6 animate-fade-in"
+          onClick={() => setQuickPreviewDoc(null)}
+        >
+          <div 
+            className="bg-white text-slate-900 w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl relative flex flex-col overflow-hidden border border-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
+                  <Eye size={18} />
+                </div>
+                <div>
+                  <h3 className="font-sans font-extrabold text-slate-900 text-sm sm:text-base leading-tight">
+                    Hakiki ya Nyaraka (Quick Preview)
+                  </h3>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    Ukurasa wa 1 • Ukaguzi wa Haraka Kabla ya Kusoma
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setQuickPreviewDoc(null)}
+                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-full transition-all cursor-pointer"
+                title="Funga"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body - 2 Columns */}
+            <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-12 gap-6">
+              {/* Left Column: First Page Image Preview */}
+              <div className="md:col-span-5 flex flex-col items-center justify-start space-y-3">
+                <div className="relative w-full aspect-[3/4] max-w-[280px] bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden group flex flex-col">
+                  {/* Top Sheet Header Simulation */}
+                  <div className="bg-slate-100 border-b border-slate-200 px-3 py-1.5 flex items-center justify-between text-[10px] font-bold text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <BookOpen size={11} className="text-emerald-600" />
+                      Uk. 1 wa Nyaraka
+                    </span>
+                    <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-black uppercase">
+                      PDF Preview
+                    </span>
+                  </div>
+
+                  {/* Image Display or Fallback SVG Canvas */}
+                  <div className="flex-1 relative bg-slate-50 flex items-center justify-center p-3 overflow-hidden">
+                    {getFirstPageImageUrl(quickPreviewDoc) && !previewImageFailed ? (
+                      <img
+                        src={getFirstPageImageUrl(quickPreviewDoc)!}
+                        alt={`Preview page 1 of ${quickPreviewDoc.title}`}
+                        className="w-full h-full object-contain drop-shadow-md rounded transition-transform duration-300 group-hover:scale-105"
+                        referrerPolicy="no-referrer"
+                        onError={() => setPreviewImageFailed(true)}
+                      />
+                    ) : (
+                      /* High Quality Synthetic Page 1 Visual Canvas Fallback */
+                      <div className="w-full h-full bg-white border border-slate-200 rounded-lg p-4 flex flex-col justify-between shadow-inner select-none">
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-700">
+                              LUPANULLA ELIMU HUB
+                            </span>
+                            <span className="text-[8px] font-extrabold text-slate-400">
+                              {quickPreviewDoc.year || 2024}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <span className="text-[8px] font-bold uppercase text-slate-400 block">
+                              {quickPreviewDoc.subject || 'Somo'} • {(quickPreviewDoc as any).educationLevel || 'NECTA'}
+                            </span>
+                            <p className="text-xs font-black text-slate-900 leading-snug line-clamp-3">
+                              {quickPreviewDoc.title}
+                            </p>
+                          </div>
+
+                          {/* Line Skeletons representing PDF Page text */}
+                          <div className="space-y-1.5 pt-2">
+                            <div className="h-1.5 bg-slate-200 rounded-full w-full"></div>
+                            <div className="h-1.5 bg-slate-200 rounded-full w-5/6"></div>
+                            <div className="h-1.5 bg-slate-200 rounded-full w-4/5"></div>
+                            <div className="h-1.5 bg-slate-100 rounded-full w-full"></div>
+                            <div className="h-1.5 bg-slate-100 rounded-full w-2/3"></div>
+                          </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-100 text-center">
+                          <span className="inline-block text-[8px] font-black uppercase tracking-wider text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                            NECTA / SCHOOLDOC PREVIEW
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bottom bar indicator */}
+                  <div className="bg-slate-900 text-white text-[10px] py-1.5 px-3 flex items-center justify-between font-bold">
+                    <span>Ukurasa wa 1</span>
+                    <span className="text-emerald-400 font-extrabold flex items-center gap-1 text-[9px]">
+                      <Sparkles size={10} /> Nyaraka Halisi
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-slate-400 font-semibold text-center">
+                  💡 Mtazamo wa haraka wa ukurasa wa kwanza wa nyaraka.
+                </p>
+              </div>
+
+              {/* Right Column: Metadata Details & Action CTAs */}
+              <div className="md:col-span-7 flex flex-col justify-between space-y-6">
+                <div className="space-y-4">
+                  {/* Badges */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider rounded-lg border border-emerald-200">
+                      {quickPreviewDoc.subject || 'Jumla'}
+                    </span>
+                    <span className="px-2.5 py-1 bg-indigo-100 text-indigo-800 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-indigo-200">
+                      {(quickPreviewDoc as any).educationLevel || 'Kawaida'}
+                    </span>
+                    {quickPreviewDoc.year && (
+                      <span className="px-2.5 py-1 bg-slate-100 text-slate-700 text-[10px] font-bold rounded-lg border border-slate-200 flex items-center gap-1">
+                        <Calendar size={11} /> Mwaka {quickPreviewDoc.year}
+                      </span>
+                    )}
+                    {quickPreviewDoc.isForSale ? (
+                      <span className="px-2.5 py-1 bg-amber-400 text-amber-950 text-[10px] font-black uppercase tracking-wider rounded-lg border border-amber-500 shadow-2xs">
+                        TSh {(quickPreviewDoc.price || 0).toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-1 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider rounded-lg shadow-2xs">
+                        BURE
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Title */}
+                  <h2 className="font-sans font-extrabold text-slate-900 text-lg sm:text-xl leading-snug">
+                    {quickPreviewDoc.title}
+                  </h2>
+
+                  {/* Details stats & uploader */}
+                  <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-500 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-1.5">
+                      <User size={14} className="text-slate-400" />
+                      <span>Mpakiaji: <strong className="text-slate-800">{quickPreviewDoc.uploadedByName || 'Mwanachama'}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Eye size={14} className="text-slate-400" />
+                      <span><strong>{(quickPreviewDoc.views || 0).toLocaleString()}</strong> views</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Download size={14} className="text-slate-400" />
+                      <span><strong>{(quickPreviewDoc.downloadsCount || 0).toLocaleString()}</strong> downloads</span>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-1">
+                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Maelezo ya Nyaraka:</h4>
+                    <p className="text-xs text-slate-600 font-semibold leading-relaxed bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
+                      {quickPreviewDoc.description || 'Hakuna maelezo ya ziada yaliyotolewa kwa nyaraka hii.'}
+                    </p>
+                  </div>
+
+                  {/* Tags */}
+                  {quickPreviewDoc.tags && quickPreviewDoc.tags.length > 0 && (
+                    <div className="space-y-1">
+                      <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-wider">Lebo (Tags):</h4>
+                      <div className="flex flex-wrap gap-1">
+                        {quickPreviewDoc.tags.map((tag, idx) => (
+                          <span key={idx} className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Primary Actions CTAs */}
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      onClick={() => {
+                        const doc = quickPreviewDoc;
+                        setQuickPreviewDoc(null);
+                        handlePreview(doc);
+                      }}
+                      className="py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl transition-all shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <BookOpen size={16} />
+                      Fungua Kusoma Kamili
+                    </button>
+
+                    <button
+                      onClick={() => handleDownload(quickPreviewDoc)}
+                      className="py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs uppercase tracking-wider rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Download size={16} />
+                      Pakua PDF Halisi
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={(e) => handleToggleBookmark(quickPreviewDoc, e)}
+                      className={`py-2 px-3 font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all border flex items-center justify-center gap-1.5 cursor-pointer ${
+                        bookmarkedIds.includes(quickPreviewDoc.id)
+                          ? 'bg-amber-50 border-amber-200 text-amber-700'
+                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Bookmark size={14} fill={bookmarkedIds.includes(quickPreviewDoc.id) ? "currentColor" : "none"} />
+                      {bookmarkedIds.includes(quickPreviewDoc.id) ? 'Imehifadhiwa' : 'Hifadhi'}
+                    </button>
+
+                    <button
+                      onClick={() => handleShare(quickPreviewDoc)}
+                      className="py-2 px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Share2 size={14} />
+                      Gawa Link
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

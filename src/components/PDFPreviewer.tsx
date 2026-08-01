@@ -38,6 +38,10 @@ interface PDFPreviewerProps {
   type?: string;
   onSelectText?: (text: string) => void;
   onSwitchToNotes?: () => void;
+  onAddPageNote?: (pageNumber: number) => void;
+  pageNotesCount?: number;
+  onAddVocabulary?: (word?: string) => void;
+  vocabularyCount?: number;
 }
 
 interface PageData {
@@ -779,7 +783,11 @@ export default function PDFPreviewer({
   year, 
   type,
   onSelectText,
-  onSwitchToNotes
+  onSwitchToNotes,
+  onAddPageNote,
+  pageNotesCount = 0,
+  onAddVocabulary,
+  vocabularyCount = 0
 }: PDFPreviewerProps) {
   const [isMobile, setIsMobile] = useState<boolean>(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -3247,8 +3255,40 @@ export default function PDFPreviewer({
             </>
           )}
 
-          {/* New Tab & Fullscreen Controls - ALWAYS visible */}
+          {/* New Tab, Note & Fullscreen Controls - ALWAYS visible */}
           <div className="flex items-center gap-1.5 ml-1 border-l border-slate-800 pl-2">
+            {onAddPageNote && (
+              <button
+                onClick={() => onAddPageNote(currentPage)}
+                className="p-2 bg-emerald-600/90 hover:bg-emerald-600 border border-emerald-500 text-white rounded-lg transition-all flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider shadow-sm cursor-pointer"
+                title={`Weka notisi kwenye ukurasa wa ${currentPage}`}
+              >
+                <FileText size={13} className="text-emerald-200" />
+                <span className="hidden sm:inline">Note Uk. {currentPage}</span>
+                {pageNotesCount > 0 && (
+                  <span className="px-1.5 py-0.2 bg-emerald-950 text-emerald-300 font-black text-[9px] rounded-full">
+                    {pageNotesCount}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {onAddVocabulary && (
+              <button
+                onClick={() => onAddVocabulary()}
+                className="p-2 bg-purple-600/90 hover:bg-purple-600 border border-purple-500 text-white rounded-lg transition-all flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider shadow-sm cursor-pointer"
+                title="Fungua msamiati au hifadhi neno lililochaguliwa"
+              >
+                <BookOpen size={13} className="text-purple-200" />
+                <span className="hidden sm:inline">Msamiati</span>
+                {vocabularyCount > 0 && (
+                  <span className="px-1.5 py-0.2 bg-purple-950 text-purple-200 font-black text-[9px] rounded-full">
+                    {vocabularyCount}
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Open in New Tab / Google Drive Button */}
             <a 
               href={formattedDrive.directUrl || driveUrl} 
@@ -3456,6 +3496,28 @@ export default function PDFPreviewer({
               >
                 <ChevronRight size={16} />
               </button>
+
+              {onAddPageNote && (
+                <button
+                  onClick={() => onAddPageNote(currentPage)}
+                  className="ml-1 py-1 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm cursor-pointer border border-emerald-500"
+                  title={`Weka notisi kwenye Ukurasa wa ${currentPage}`}
+                >
+                  <FileText size={12} />
+                  + Note Uk. {currentPage}
+                </button>
+              )}
+
+              {onAddVocabulary && (
+                <button
+                  onClick={() => onAddVocabulary()}
+                  className="ml-1 py-1 px-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm cursor-pointer border border-purple-500"
+                  title="Fungua msamiati au hifadhi neno"
+                >
+                  <BookOpen size={12} />
+                  Msamiati ({vocabularyCount})
+                </button>
+              )}
             </div>
           </>
         )}

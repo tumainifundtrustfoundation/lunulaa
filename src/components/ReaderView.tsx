@@ -22,10 +22,20 @@ import {
   Minimize2,
   Printer,
   ShieldAlert,
-  Link2
+  Link2,
+  StickyNote,
+  Edit3,
+  BookOpen,
+  BookMarked,
+  Search,
+  Volume2,
+  RefreshCw,
+  X,
+  Filter,
+  EyeOff
 } from 'lucide-react';
-import { fetchDocuments, saveHighlight, fetchHighlights, deleteHighlight, toggleBookmark, fetchUserBookmarks, submitFeedback, updateDocument } from '../firebase';
-import { DocumentMetadata, HighlightAnnotation, UserBookmark } from '../types';
+import { fetchDocuments, saveHighlight, fetchHighlights, deleteHighlight, toggleBookmark, fetchUserBookmarks, submitFeedback, updateDocument, savePDFPageNote, fetchPDFPageNotes, deletePDFPageNote, saveVocabularyItem, fetchVocabularyItems, deleteVocabularyItem } from '../firebase';
+import { DocumentMetadata, HighlightAnnotation, UserBookmark, PDFPageNote, VocabularyItem } from '../types';
 import FlashcardsModal from './FlashcardsModal';
 import PDFPreviewer from './PDFPreviewer';
 import { jsPDF } from 'jspdf';
@@ -111,6 +121,28 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
   const [smartNotes, setSmartNotes] = useState('');
   const [loadingSmartNotes, setLoadingSmartNotes] = useState(false);
 
+  // PDF Page Notes state
+  const [pageNotes, setPageNotes] = useState<PDFPageNote[]>([]);
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [selectedNotePage, setSelectedNotePage] = useState<number>(1);
+  const [noteText, setNoteText] = useState('');
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
+  // My Vocabulary state
+  const [vocabularyItems, setVocabularyItems] = useState<VocabularyItem[]>([]);
+  const [isVocabOpen, setIsVocabOpen] = useState(false);
+  const [vocabSearchQuery, setVocabSearchQuery] = useState('');
+  const [filterDocOption, setFilterDocOption] = useState<'current' | 'all'>('current');
+  const [vocabWordInput, setVocabWordInput] = useState('');
+  const [vocabDefInput, setVocabDefInput] = useState('');
+  const [vocabContextInput, setVocabContextInput] = useState('');
+  const [editingVocabId, setEditingVocabId] = useState<string | null>(null);
+  const [isSavingVocab, setIsSavingVocab] = useState(false);
+  const [isGeneratingDef, setIsGeneratingDef] = useState(false);
+  const [revisionMode, setRevisionMode] = useState(false);
+  const [revealedVocabIds, setRevealedVocabIds] = useState<Record<string, boolean>>({});
+
   const loadHighlights = async () => {
     if (!userProfile?.uid) return;
     try {
@@ -118,6 +150,203 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
       setHighlights(fetched);
     } catch (e) {
       console.error('Error loading highlights:', e);
+    }
+  };
+
+  const loadPageNotes = async () => {
+    if (!userProfile?.uid) return;
+    try {
+      const fetched = await fetchPDFPageNotes(userProfile.uid, documentId);
+      setPageNotes(fetched);
+    } catch (e) {
+      console.error('Error loading page notes:', e);
+    }
+  };
+
+  const handleOpenNoteModal = (pageNumber?: number, existingNote?: PDFPageNote) => {
+    if (!userProfile?.uid) {
+      alert('🔒 TAFADHALI INGIA KWENYE AKAUNTI:\nKuhifadhi notisi za ukurasa ni huduma inayohitaji uwe umeingia kwenye akaunti yako ya Lupanulla.');
+      return;
+    }
+    if (existingNote) {
+      setEditingNoteId(existingNote.id);
+      setSelectedNotePage(existingNote.pageNumber);
+      setNoteText(existingNote.content);
+    } else {
+      setEditingNoteId(null);
+      setSelectedNotePage(pageNumber || 1);
+      setNoteText('');
+    }
+    setIsNoteModalOpen(true);
+  };
+
+  const handleSavePageNote = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!userProfile?.uid) {
+      alert('🔒 TAFADHALI INGIA KWENYE AKAUNTI:\nKuhifadhi notisi za ukurasa ni huduma inayohitaji uwe umeingia kwenye akaunti yako ya Lupanulla.');
+      return;
+    }
+    if (!noteText.trim()) {
+      alert('Tafadhali andika maelezo au notisi yako.');
+      return;
+    }
+
+    try {
+      setIsSavingNote(true);
+      await savePDFPageNote({
+        id: editingNoteId || undefined,
+        userId: userProfile.uid,
+        documentId: documentId,
+        documentTitle: doc?.title || 'PDF Document',
+        pageNumber: Number(selectedNotePage) || 1,
+        content: noteText.trim(),
+      });
+      setNoteText('');
+      setEditingNoteId(null);
+      await loadPageNotes();
+    } catch (err: any) {
+      console.error('Error saving PDF page note:', err);
+      alert('Kuna tatizo wakati wa kuhifadhi notisi: ' + (err.message || err));
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  const handleDeletePageNote = async (id: string) => {
+    if (!confirm('Je, una uhakika unataka kufuta notisi hii?')) return;
+    try {
+      await deletePDFPageNote(id);
+      await loadPageNotes();
+    } catch (err) {
+      console.error('Error deleting PDF page note:', err);
+    }
+  };
+
+  const loadVocabulary = async () => {
+    if (!userProfile?.uid) return;
+    try {
+      const fetched = await fetchVocabularyItems(userProfile.uid);
+      setVocabularyItems(fetched);
+    } catch (e) {
+      console.error('Error loading vocabulary items:', e);
+    }
+  };
+
+  const handleOpenVocabModal = (prefillWord?: string, existingItem?: VocabularyItem) => {
+    if (!userProfile?.uid) {
+      alert('🔒 TAFADHALI INGIA KWENYE AKAUNTI:\nKuhifadhi msamiati ni huduma inayohitaji uwe umeingia kwenye akaunti yako ya Lupanulla.');
+      return;
+    }
+    if (existingItem) {
+      setEditingVocabId(existingItem.id);
+      setVocabWordInput(existingItem.word);
+      setVocabDefInput(existingItem.definition || '');
+      setVocabContextInput(existingItem.contextSentence || '');
+    } else {
+      setEditingVocabId(null);
+      setVocabWordInput(prefillWord || selectedText || '');
+      setVocabDefInput('');
+      setVocabContextInput(prefillWord ? `Amesomwa kutoka kitabu cha ${doc?.title || 'PDF'}` : '');
+    }
+    setIsVocabOpen(true);
+  };
+
+  const handleSaveVocabulary = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!userProfile?.uid) {
+      alert('🔒 TAFADHALI INGIA KWENYE AKAUNTI:\nKuhifadhi msamiati ni huduma inayohitaji uwe umeingia kwenye akaunti yako ya Lupanulla.');
+      return;
+    }
+    const word = vocabWordInput.trim();
+    if (!word) {
+      alert('Tafadhali ingiza neno au kishazi cha msamiati.');
+      return;
+    }
+
+    try {
+      setIsSavingVocab(true);
+      await saveVocabularyItem({
+        id: editingVocabId || undefined,
+        userId: userProfile.uid,
+        word,
+        definition: vocabDefInput.trim(),
+        contextSentence: vocabContextInput.trim(),
+        documentId: documentId,
+        documentTitle: doc?.title || 'PDF Document',
+      });
+      setVocabWordInput('');
+      setVocabDefInput('');
+      setVocabContextInput('');
+      setEditingVocabId(null);
+      await loadVocabulary();
+    } catch (err: any) {
+      console.error('Error saving vocabulary item:', err);
+      alert('Kuna tatizo wakati wa kuhifadhi msamiati: ' + (err.message || err));
+    } finally {
+      setIsSavingVocab(false);
+    }
+  };
+
+  const handleQuickAddSelectionToVocab = async () => {
+    if (!selectedText.trim()) {
+      alert('Tafadhali chagua neno kwenye maelezo kwanza.');
+      return;
+    }
+    handleOpenVocabModal(selectedText.trim());
+  };
+
+  const handleDeleteVocabulary = async (id: string) => {
+    if (!confirm('Je, una uhakika unataka kufuta neno hili kutoka kwenye msamiati wako?')) return;
+    try {
+      await deleteVocabularyItem(id);
+      await loadVocabulary();
+    } catch (err) {
+      console.error('Error deleting vocabulary item:', err);
+    }
+  };
+
+  const handleAutoDefineWord = async () => {
+    const wordToDefine = vocabWordInput.trim();
+    if (!wordToDefine) {
+      alert('Ingiza neno hapo juu kwanza ili kupata maana ya AI!');
+      return;
+    }
+
+    try {
+      setIsGeneratingDef(true);
+      const response = await fetch('/api/claude.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system: "Wewe ni Mtaalamu wa Kamusi ya Kitaaluma nchini Tanzania (Lupanulla Elimuhu). Toa fasili fupi na maelezo mepesi kwa Kiswahili kwa ajili ya neno hili la msamiati la kitaaluma.",
+          messages: [
+            {
+              role: 'user',
+              content: `Toa maana au fasili fupi ya kitaaluma kwa Kiswahili kwa ajili ya neno/kishazi hichi: "${wordToDefine}". Somo: "${doc?.category || 'Masomo'}".`
+            }
+          ]
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.reply) {
+          setVocabDefInput(data.reply.trim());
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching AI definition:', err);
+    } finally {
+      setIsGeneratingDef(false);
+    }
+  };
+
+  const handleSpeakWord = (text: string) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'sw-TZ';
+      window.speechSynthesis.speak(utterance);
     }
   };
 
@@ -567,9 +796,11 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
 
     checkBookmarkStatus();
 
-    // Load active highlights
+    // Load active highlights, PDF page notes, and vocabulary items
     if (userProfile?.uid) {
       loadHighlights();
+      loadPageNotes();
+      loadVocabulary();
     }
   }, [documentId, userProfile?.uid]);
 
@@ -936,6 +1167,27 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
         }
       }
 
+      // Append PDF Page Notes if they exist
+      if (pageNotes.length > 0) {
+        if (y + 30 > pageHeight - 20) {
+          pdf.addPage();
+          addHeaderFooter(pdf.getNumberOfPages(), '');
+          y = 20;
+        } else {
+          y += 5;
+          pdf.line(margin, y, pageWidth - margin, y);
+          y += 10;
+        }
+
+        printParagraph('NOTISI ZA KURASA ZA PDF (PAGE NOTES)', 12, 'bold', [16, 185, 129], 4, 6);
+
+        for (const n of pageNotes) {
+          printParagraph(`Ukurasa na. ${n.pageNumber}:`, 10, 'bold', [6, 95, 70], 2, 2);
+          printParagraph(`${n.content}`, 9, 'normal', [30, 41, 59], 2, 3);
+          printParagraph(`Tarehe: ${new Date(n.createdAt).toLocaleDateString('sw-TZ')}`, 8, 'italic', [148, 163, 184], 1, 4);
+        }
+      }
+
       // Add Headers/Footers on all pages
       const totalPages = pdf.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
@@ -998,6 +1250,38 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
         </button>
 
         <div className="flex items-center gap-2">
+          {/* PDF Page Note Button */}
+          <button 
+            onClick={() => handleOpenNoteModal(1)}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer border border-emerald-500"
+            title="Weka au angalia notisi za kurasa za PDF"
+          >
+            <StickyNote size={15} className="text-emerald-200" />
+            <span className="hidden sm:inline">Note ya Ukurasa</span>
+            <span className="sm:hidden">Note</span>
+            {pageNotes.length > 0 && (
+              <span className="px-1.5 py-0.2 bg-emerald-950 text-emerald-300 font-black text-[10px] rounded-full">
+                {pageNotes.length}
+              </span>
+            )}
+          </button>
+
+          {/* My Vocabulary Button */}
+          <button 
+            onClick={() => handleOpenVocabModal()}
+            className="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm bg-purple-600 hover:bg-purple-500 text-white cursor-pointer border border-purple-500"
+            title="Fungua msamiati wako wa marudio"
+          >
+            <BookMarked size={15} className="text-purple-200" />
+            <span className="hidden sm:inline">Msamiati Wangu</span>
+            <span className="sm:hidden">Msamiati</span>
+            {vocabularyItems.length > 0 && (
+              <span className="px-1.5 py-0.2 bg-purple-950 text-purple-200 font-black text-[10px] rounded-full">
+                {vocabularyItems.length}
+              </span>
+            )}
+          </button>
+
           <button 
             onClick={handleToggleBookmark}
             className={`p-2 rounded-xl border transition-all ${isBookmarked ? 'bg-cyan-50 border-cyan-100 text-cyan-600' : 'bg-slate-50 border-slate-150 text-slate-400 hover:text-slate-600'}`}
@@ -1107,6 +1391,10 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
                 type={doc.type}
                 onSelectText={setSelectedText}
                 onSwitchToNotes={() => handleToggleReaderMode('notes')}
+                onAddPageNote={(page) => handleOpenNoteModal(page)}
+                pageNotesCount={pageNotes.length}
+                onAddVocabulary={(word) => handleOpenVocabModal(word)}
+                vocabularyCount={vocabularyItems.length}
               />
             </div>
           ) : (
@@ -1211,14 +1499,22 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
                     />
                   </div>
 
-                  <div className="flex gap-2 pt-1">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     <button
                       onClick={handleSaveHighlight}
                       disabled={savingHighlight}
-                      className="flex-grow py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="flex-1 py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       <Plus size={13} />
-                      {savingHighlight ? 'Inahifadhi...' : 'Hifadhi Highlight'}
+                      {savingHighlight ? 'Inahifadhi...' : 'Highlight'}
+                    </button>
+                    <button
+                      onClick={handleQuickAddSelectionToVocab}
+                      className="flex-1 py-2.5 px-3 bg-purple-700 hover:bg-purple-600 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                      title="Weka neno hili kwenye Msamiati Wangu"
+                    >
+                      <BookOpen size={13} />
+                      + Msamiati
                     </button>
                     <button
                       onClick={() => setSelectedText('')}
@@ -1515,6 +1811,566 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* PDF Page Notes Modal */}
+      {isNoteModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden animate-scale-up">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-emerald-700 to-teal-800 text-white p-5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-white/10 rounded-xl">
+                  <StickyNote size={20} className="text-emerald-300" />
+                </div>
+                <div>
+                  <h3 className="font-display font-black text-base uppercase tracking-wide">Notisi za Kurasa za PDF</h3>
+                  <p className="text-[11px] text-emerald-100 font-medium truncate max-w-md">{doc?.title || 'Weka maelezo kwenye kurasa za PDF'}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsNoteModalOpen(false);
+                  setEditingNoteId(null);
+                  setNoteText('');
+                }}
+                className="p-2 text-emerald-200 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* Form to Add / Edit Note */}
+              <form onSubmit={handleSavePageNote} className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
+                    <Plus size={14} className="text-emerald-600" />
+                    {editingNoteId ? 'Hariri Notisi ya Ukurasa' : 'Weka Notisi Mpya ya Ukurasa'}
+                  </h4>
+                  {editingNoteId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingNoteId(null);
+                        setNoteText('');
+                      }}
+                      className="text-[11px] font-bold text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                    >
+                      Ghairi Uhariri
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-1 space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">Ukurasa Namba:</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={999}
+                        value={selectedNotePage}
+                        onChange={(e) => setSelectedNotePage(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-mono text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">Dokezo / Maelezo Yako:</label>
+                    <textarea
+                      rows={2}
+                      value={noteText}
+                      onChange={(e) => setNoteText(e.target.value)}
+                      placeholder="Andika muhtasari au dokezo ako kwenye ukurasa huu..."
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={isSavingNote || !noteText.trim()}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-extrabold rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                  >
+                    {isSavingNote ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Inahifadhi...
+                      </>
+                    ) : (
+                      <>
+                        <Check size={14} />
+                        {editingNoteId ? 'Hifadhi Mabadiliko' : 'Hifadhi Notisi katika Ukurasa'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+
+              {/* List of Saved Notes */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                    <FileText size={15} className="text-emerald-600" />
+                    Notisi Zilizohifadhiwa ({pageNotes.length})
+                  </h4>
+                  <span className="text-[10px] text-slate-400 font-medium">Zimepangwa kwa Ukurasa</span>
+                </div>
+
+                {pageNotes.length === 0 ? (
+                  <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-8 text-center space-y-2">
+                    <StickyNote size={32} className="text-slate-300 mx-auto" />
+                    <p className="text-xs font-bold text-slate-600">Haujaweka notisi yoyote kwenye PDF hii bado.</p>
+                    <p className="text-[11px] text-slate-400">Tumia fomu hapo juu kuandika notisi au bonyeza "Note Uk. X" wakati unasoma.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                    {pageNotes.map((n) => (
+                      <div
+                        key={n.id}
+                        className="bg-white border border-slate-200 hover:border-emerald-300 rounded-2xl p-4 transition-all space-y-2 shadow-sm relative group"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] rounded-lg tracking-wider uppercase flex items-center gap-1">
+                            <FileText size={11} /> Ukurasa {n.pageNumber}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {new Date(n.createdAt).toLocaleDateString('sw-TZ')}
+                            </span>
+                            <button
+                              onClick={() => handleOpenNoteModal(n.pageNumber, n)}
+                              className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all cursor-pointer"
+                              title="Hariri"
+                            >
+                              <Edit3 size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleDeletePageNote(n.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                              title="Futa"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-slate-800 font-medium leading-relaxed whitespace-pre-wrap bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          {n.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-slate-50 border-t border-slate-100 p-4 shrink-0 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500 font-medium">
+                Notisi zote zinahifadhiwa mtandaoni (Firestore) na zinaweza kufikiwa wakati wowote.
+              </span>
+              <button
+                onClick={() => setIsNoteModalOpen(false)}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                Funga
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* My Vocabulary Side-Panel Drawer */}
+      {isVocabOpen && (
+        <div className="fixed inset-0 z-[99998] flex justify-end">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity animate-fade-in"
+            onClick={() => setIsVocabOpen(false)}
+          />
+
+          {/* Drawer Container */}
+          <div className="relative w-full sm:w-[500px] lg:w-[540px] bg-white h-full z-[99999] shadow-2xl flex flex-col border-l border-slate-200 animate-slide-in-right overflow-hidden">
+            {/* Drawer Header */}
+            <div className="bg-gradient-to-r from-purple-800 via-purple-700 to-indigo-900 text-white p-5 flex items-center justify-between shrink-0 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20">
+                  <BookMarked size={22} className="text-purple-200" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display font-black text-base uppercase tracking-wider">Msamiati Wangu</h3>
+                    <span className="px-2 py-0.5 bg-purple-950/80 text-purple-200 font-black text-[11px] rounded-full border border-purple-400/30">
+                      {vocabularyItems.length}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-purple-200 font-medium">Orodha binafsi ya maneno kwa marudio na maandalizi ya mitihani</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setIsVocabOpen(false);
+                  setEditingVocabId(null);
+                  setVocabWordInput('');
+                  setVocabDefInput('');
+                  setVocabContextInput('');
+                }}
+                className="p-2 text-purple-200 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer font-bold"
+                title="Funga Msamiati"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Filter & Toolbar Header */}
+            <div className="bg-slate-50 border-b border-slate-200 p-4 shrink-0 space-y-3">
+              {/* Search input & Revision mode toggle */}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={vocabSearchQuery}
+                    onChange={(e) => setVocabSearchQuery(e.target.value)}
+                    placeholder="Tafuta neno au maana..."
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500"
+                  />
+                  {vocabSearchQuery && (
+                    <button
+                      onClick={() => setVocabSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Revision mode toggle button */}
+                <button
+                  onClick={() => setRevisionMode(!revisionMode)}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border shadow-sm cursor-pointer whitespace-nowrap ${
+                    revisionMode 
+                      ? 'bg-amber-500 border-amber-600 text-white font-extrabold ring-2 ring-amber-500/20' 
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                  title={revisionMode ? "Zima Hali ya Marudio" : "Washa Hali ya Marudio kujipima uwezo wa kukumbuka maneno"}
+                >
+                  {revisionMode ? <Brain size={14} className="text-white animate-bounce" /> : <EyeOff size={14} className="text-slate-500" />}
+                  <span>{revisionMode ? 'Marudio 🧠' : 'Test Mode'}</span>
+                </button>
+              </div>
+
+              {/* Document filter options */}
+              <div className="flex items-center justify-between text-[11px]">
+                <div className="flex items-center gap-1.5 bg-slate-200/70 p-1 rounded-xl">
+                  <button
+                    onClick={() => setFilterDocOption('current')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      filterDocOption === 'current'
+                        ? 'bg-white text-purple-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Kitabu Hiki ({vocabularyItems.filter(v => v.documentId === documentId).length})
+                  </button>
+                  <button
+                    onClick={() => setFilterDocOption('all')}
+                    className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      filterDocOption === 'all'
+                        ? 'bg-white text-purple-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Masomo Yote ({vocabularyItems.length})
+                  </button>
+                </div>
+
+                {revisionMode && (
+                  <button
+                    onClick={() => {
+                      const allRevealed = Object.keys(revealedVocabIds).length === vocabularyItems.length;
+                      if (allRevealed) {
+                        setRevealedVocabIds({});
+                      } else {
+                        const next: Record<string, boolean> = {};
+                        vocabularyItems.forEach(v => next[v.id] = true);
+                        setRevealedVocabIds(next);
+                      }
+                    }}
+                    className="text-[10px] font-bold text-purple-700 hover:text-purple-900 underline cursor-pointer"
+                  >
+                    {Object.keys(revealedVocabIds).length === vocabularyItems.length ? 'Ficha Maana Zote' : 'Onyesha Maana Zote'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="p-5 overflow-y-auto space-y-6 flex-1">
+              {/* Form to Add / Edit Vocabulary */}
+              <form onSubmit={handleSaveVocabulary} className="bg-purple-50/70 border border-purple-200/80 rounded-2xl p-4 space-y-3.5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-purple-950 flex items-center gap-1.5">
+                    <Plus size={14} className="text-purple-600" />
+                    {editingVocabId ? 'Hariri Msamiati' : 'Ongeza Neno Jipya la Msamiati'}
+                  </h4>
+                  {editingVocabId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingVocabId(null);
+                        setVocabWordInput('');
+                        setVocabDefInput('');
+                        setVocabContextInput('');
+                      }}
+                      className="text-[11px] font-bold text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                    >
+                      Ghairi Uhariri
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {/* Word Input */}
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">Neno au Kishazi (Term / Word):</label>
+                    <input
+                      type="text"
+                      value={vocabWordInput}
+                      onChange={(e) => setVocabWordInput(e.target.value)}
+                      placeholder="Mf. Photosynthesis, Ubepari, Gravity..."
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500"
+                      required
+                    />
+                  </div>
+
+                  {/* Definition Input + AI Auto Define */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">Fasili / Maana (Definition):</label>
+                      <button
+                        type="button"
+                        onClick={handleAutoDefineWord}
+                        disabled={isGeneratingDef || !vocabWordInput.trim()}
+                        className="text-[10px] font-extrabold text-purple-700 hover:text-purple-900 bg-purple-100/80 hover:bg-purple-200 px-2 py-0.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                        title="Tafuta maana ya neno hili moja kwa moja kwa kutumia Lupanulla AI"
+                      >
+                        <Sparkles size={11} className={isGeneratingDef ? 'animate-spin' : ''} />
+                        {isGeneratingDef ? 'Inafasili...' : 'Pata Maana kwa AI'}
+                      </button>
+                    </div>
+                    <textarea
+                      rows={2}
+                      value={vocabDefInput}
+                      onChange={(e) => setVocabDefInput(e.target.value)}
+                      placeholder="Andika maana au muhtasari wa neno hili..."
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500 resize-none"
+                    />
+                  </div>
+
+                  {/* Context Sentence */}
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">Sentensi au Muktadha wa Matumizi (Context Sentence):</label>
+                    <input
+                      type="text"
+                      value={vocabContextInput}
+                      onChange={(e) => setVocabContextInput(e.target.value)}
+                      placeholder="Mf. Plants produce oxygen during photosynthesis..."
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    disabled={isSavingVocab || !vocabWordInput.trim()}
+                    className="px-5 py-2.5 bg-purple-700 hover:bg-purple-600 disabled:opacity-50 text-white text-xs font-extrabold rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                  >
+                    {isSavingVocab ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Inahifadhi...
+                      </>
+                    ) : (
+                      <>
+                        <Check size={14} />
+                        {editingVocabId ? 'Hifadhi Mabadiliko' : 'Hifadhi kwenye Msamiati'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+
+              {/* Vocabulary Items List */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                    <BookMarked size={15} className="text-purple-600" />
+                    Maneno ya Msamiati Wangu (
+                    {
+                      vocabularyItems
+                        .filter(v => filterDocOption === 'all' || v.documentId === documentId)
+                        .filter(v => !vocabSearchQuery || v.word.toLowerCase().includes(vocabSearchQuery.toLowerCase()) || (v.definition && v.definition.toLowerCase().includes(vocabSearchQuery.toLowerCase()))).length
+                    }
+                    )
+                  </h4>
+                  {revisionMode && (
+                    <span className="text-[10px] bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full font-bold">
+                      🧠 Hali ya Marudio Imewashwa
+                    </span>
+                  )}
+                </div>
+
+                {(() => {
+                  const filtered = vocabularyItems
+                    .filter(v => filterDocOption === 'all' || v.documentId === documentId)
+                    .filter(v => !vocabSearchQuery || v.word.toLowerCase().includes(vocabSearchQuery.toLowerCase()) || (v.definition && v.definition.toLowerCase().includes(vocabSearchQuery.toLowerCase())));
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-8 text-center space-y-2">
+                        <BookOpen size={36} className="text-purple-300 mx-auto" />
+                        <p className="text-xs font-bold text-slate-700">
+                          {vocabSearchQuery ? 'Hakuna msamiati unaofanana na utafutaji wako.' : 'Bado haujahifadhi maneno ya msamiati hapa.'}
+                        </p>
+                        <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                          Chagua neno lolote katika notisi na ubonyeze "+ Msamiati" au tumia fomu hapo juu kuongeza maneno yako.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      {filtered.map((item) => {
+                        const isRevealed = Boolean(revealedVocabIds[item.id]);
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="bg-white border border-purple-100 hover:border-purple-300 rounded-2xl p-4 transition-all space-y-2.5 shadow-sm hover:shadow-md relative group"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <h5 className="font-display font-black text-base text-purple-950 capitalize tracking-tight">
+                                    {item.word}
+                                  </h5>
+                                  <button
+                                    onClick={() => handleSpeakWord(item.word)}
+                                    className="p-1 text-purple-400 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-all cursor-pointer"
+                                    title="Sikia jinsi ya kutamka"
+                                  >
+                                    <Volume2 size={14} />
+                                  </button>
+                                </div>
+                                {item.documentTitle && (
+                                  <span className="inline-block text-[9px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md truncate max-w-xs">
+                                    📚 {item.documentTitle}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => handleOpenVocabModal(undefined, item)}
+                                  className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all cursor-pointer"
+                                  title="Hariri Neno"
+                                >
+                                  <Edit3 size={13} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteVocabulary(item.id)}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                                  title="Futa Neno"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Definition Box with Revision Mode feature */}
+                            {revisionMode ? (
+                              <div className="mt-2">
+                                {isRevealed ? (
+                                  <div className="bg-purple-50/70 border border-purple-200/70 rounded-xl p-3 space-y-1 animate-fade-in">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-[10px] font-extrabold text-purple-800 uppercase tracking-wider">Fasili / Maana:</span>
+                                      <button
+                                        onClick={() => setRevealedVocabIds(prev => ({ ...prev, [item.id]: false }))}
+                                        className="text-[9px] font-bold text-slate-400 hover:text-slate-600 underline"
+                                      >
+                                        Ficha Tena
+                                      </button>
+                                    </div>
+                                    <p className="text-xs text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">
+                                      {item.definition || 'Hakuna maana iliyowekwa.'}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setRevealedVocabIds(prev => ({ ...prev, [item.id]: true }))}
+                                    className="w-full py-3 px-4 bg-purple-100/60 hover:bg-purple-100 border border-dashed border-purple-300 rounded-xl text-center transition-all cursor-pointer group/rev"
+                                  >
+                                    <span className="text-xs font-bold text-purple-900 flex items-center justify-center gap-1.5 group-hover/rev:scale-105 transition-transform">
+                                      <Brain size={14} className="text-purple-600" />
+                                      🧠 Onyesha Maana (Tap to Reveal)
+                                    </span>
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              item.definition && (
+                                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                                  <p className="text-xs text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">
+                                    {item.definition}
+                                  </p>
+                                </div>
+                              )
+                            )}
+
+                            {/* Context Sentence */}
+                            {item.contextSentence && (
+                              <div className="text-[11px] text-slate-500 italic bg-purple-50/30 p-2 rounded-lg border-l-2 border-purple-300">
+                                "{item.contextSentence}"
+                              </div>
+                            )}
+
+                            <div className="text-[9px] text-slate-400 text-right pt-0.5">
+                              Ilihifadhiwa: {new Date(item.createdAt).toLocaleDateString('sw-TZ')}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="bg-slate-50 border-t border-slate-200 p-4 shrink-0 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500 font-medium">
+                Msamiati wako unahifadhiwa kwenye akaunti yako na unaweza kuusoma tena wakati wowote.
+              </span>
+              <button
+                onClick={() => setIsVocabOpen(false)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                Funga
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -34,7 +34,7 @@ import {
   getDocFromServer,
   serverTimestamp
 } from 'firebase/firestore';
-import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation, UserBookmark, WebsiteNews, PaymentTransaction, QuickBuyOrder, NectaProgress, StudyEvent } from './types';
+import { UserProfile, DocumentMetadata, Comment, UserRole, SubscriptionTier, DocumentStatus, Announcement, Product, Video, Order, AppNotification, Feedback, Certificate, ExamResult, AuditLog, SystemConfig, EducationalResource, HighlightAnnotation, PDFPageNote, VocabularyItem, UserBookmark, WebsiteNews, PaymentTransaction, QuickBuyOrder, NectaProgress, StudyEvent } from './types';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase
@@ -1588,6 +1588,287 @@ export const deleteHighlight = async (id: string): Promise<void> => {
       let list: HighlightAnnotation[] = JSON.parse(localHighlights);
       list = list.filter(h => h.id !== id);
       localStorage.setItem('local_highlights', JSON.stringify(list));
+    }
+  }
+};
+
+/**
+ * Save or update a PDF page note attached to a specific page
+ */
+export const savePDFPageNote = async (
+  noteData: Omit<PDFPageNote, 'id' | 'createdAt'> & { id?: string }
+): Promise<string> => {
+  const path = 'pdf_page_notes';
+  try {
+    const noteId = noteData.id || doc(collection(db, path)).id;
+    const now = Date.now();
+    const fullNote: PDFPageNote = {
+      id: noteId,
+      userId: noteData.userId,
+      documentId: noteData.documentId,
+      documentTitle: noteData.documentTitle || '',
+      pageNumber: Number(noteData.pageNumber) || 1,
+      content: noteData.content,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const docRef = doc(db, path, noteId);
+    await setDoc(docRef, fullNote, { merge: true });
+
+    // Sync to local storage for resilient offline caching
+    const localNotes = localStorage.getItem('local_pdf_page_notes');
+    let list: PDFPageNote[] = localNotes ? JSON.parse(localNotes) : [];
+    list = list.filter(n => n.id !== noteId);
+    list.push(fullNote);
+    localStorage.setItem('local_pdf_page_notes', JSON.stringify(list));
+
+    return noteId;
+  } catch (err: any) {
+    console.warn('savePDFPageNote fallback triggered:', err.message || err);
+    if (err?.code === 'permission-denied' || String(err).includes('permission')) {
+      handleFirestoreError(err, OperationType.WRITE, path);
+    }
+    // Offline local storage fallback
+    const noteId = noteData.id || `local_note_${Date.now()}`;
+    const now = Date.now();
+    const fullNote: PDFPageNote = {
+      id: noteId,
+      userId: noteData.userId,
+      documentId: noteData.documentId,
+      documentTitle: noteData.documentTitle || '',
+      pageNumber: Number(noteData.pageNumber) || 1,
+      content: noteData.content,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const localNotes = localStorage.getItem('local_pdf_page_notes');
+    let list: PDFPageNote[] = localNotes ? JSON.parse(localNotes) : [];
+    list = list.filter(n => n.id !== noteId);
+    list.push(fullNote);
+    localStorage.setItem('local_pdf_page_notes', JSON.stringify(list));
+    return noteId;
+  }
+};
+
+/**
+ * Fetch PDF page notes for a given user and optional documentId
+ */
+export const fetchPDFPageNotes = async (
+  userId: string,
+  documentId?: string
+): Promise<PDFPageNote[]> => {
+  const path = 'pdf_page_notes';
+  try {
+    let q;
+    if (documentId) {
+      q = query(collection(db, path), where('userId', '==', userId), where('documentId', '==', documentId));
+    } else {
+      q = query(collection(db, path), where('userId', '==', userId));
+    }
+
+    const snap = await getDocs(q);
+    const onlineList = snap.docs.map(d => d.data() as PDFPageNote);
+
+    const localNotes = localStorage.getItem('local_pdf_page_notes');
+    const localList: PDFPageNote[] = localNotes ? JSON.parse(localNotes) : [];
+
+    const map = new Map<string, PDFPageNote>();
+    localList.forEach(n => {
+      if (!documentId || n.documentId === documentId) {
+        if (n.userId === userId) map.set(n.id, n);
+      }
+    });
+    onlineList.forEach(n => map.set(n.id, n));
+
+    const result = Array.from(map.values());
+    result.sort((a, b) => a.pageNumber - b.pageNumber || b.createdAt - a.createdAt);
+    return result;
+  } catch (err: any) {
+    console.warn('fetchPDFPageNotes fallback triggered:', err.message || err);
+    if (err?.code === 'permission-denied' || String(err).includes('permission')) {
+      handleFirestoreError(err, OperationType.LIST, path);
+    }
+    const localNotes = localStorage.getItem('local_pdf_page_notes');
+    const localList: PDFPageNote[] = localNotes ? JSON.parse(localNotes) : [];
+    return localList.filter(n => n.userId === userId && (!documentId || n.documentId === documentId));
+  }
+};
+
+/**
+ * Delete a PDF page note by ID
+ */
+export const deletePDFPageNote = async (id: string): Promise<void> => {
+  const path = 'pdf_page_notes';
+  try {
+    if (id.startsWith('local_')) {
+      const localNotes = localStorage.getItem('local_pdf_page_notes');
+      if (localNotes) {
+        let list: PDFPageNote[] = JSON.parse(localNotes);
+        list = list.filter(n => n.id !== id);
+        localStorage.setItem('local_pdf_page_notes', JSON.stringify(list));
+      }
+      return;
+    }
+    const docRef = doc(db, path, id);
+    await deleteDoc(docRef);
+
+    const localNotes = localStorage.getItem('local_pdf_page_notes');
+    if (localNotes) {
+      let list: PDFPageNote[] = JSON.parse(localNotes);
+      list = list.filter(n => n.id !== id);
+      localStorage.setItem('local_pdf_page_notes', JSON.stringify(list));
+    }
+  } catch (err: any) {
+    console.warn(`deletePDFPageNote error for ${id}:`, err.message || err);
+    if (err?.code === 'permission-denied' || String(err).includes('permission')) {
+      handleFirestoreError(err, OperationType.DELETE, path);
+    }
+    const localNotes = localStorage.getItem('local_pdf_page_notes');
+    if (localNotes) {
+      let list: PDFPageNote[] = JSON.parse(localNotes);
+      list = list.filter(n => n.id !== id);
+      localStorage.setItem('local_pdf_page_notes', JSON.stringify(list));
+    }
+  }
+};
+
+/**
+ * Save or update a Vocabulary Item
+ */
+export const saveVocabularyItem = async (
+  itemData: Omit<VocabularyItem, 'id' | 'createdAt'> & { id?: string }
+): Promise<string> => {
+  const path = 'user_vocabulary';
+  try {
+    const vocabId = itemData.id || doc(collection(db, path)).id;
+    const now = Date.now();
+    const fullItem: VocabularyItem = {
+      id: vocabId,
+      userId: itemData.userId,
+      word: itemData.word.trim(),
+      definition: itemData.definition?.trim() || '',
+      contextSentence: itemData.contextSentence?.trim() || '',
+      documentId: itemData.documentId || '',
+      documentTitle: itemData.documentTitle || '',
+      createdAt: now,
+    };
+
+    const docRef = doc(db, path, vocabId);
+    await setDoc(docRef, fullItem, { merge: true });
+
+    // Sync to local storage for resilient offline caching
+    const localVocab = localStorage.getItem('local_user_vocabulary');
+    let list: VocabularyItem[] = localVocab ? JSON.parse(localVocab) : [];
+    list = list.filter(v => v.id !== vocabId);
+    list.unshift(fullItem);
+    localStorage.setItem('local_user_vocabulary', JSON.stringify(list));
+
+    return vocabId;
+  } catch (err: any) {
+    console.warn('saveVocabularyItem fallback triggered:', err.message || err);
+    if (err?.code === 'permission-denied' || String(err).includes('permission')) {
+      handleFirestoreError(err, OperationType.WRITE, path);
+    }
+    const vocabId = itemData.id || `local_vocab_${Date.now()}`;
+    const now = Date.now();
+    const fullItem: VocabularyItem = {
+      id: vocabId,
+      userId: itemData.userId,
+      word: itemData.word.trim(),
+      definition: itemData.definition?.trim() || '',
+      contextSentence: itemData.contextSentence?.trim() || '',
+      documentId: itemData.documentId || '',
+      documentTitle: itemData.documentTitle || '',
+      createdAt: now,
+    };
+    const localVocab = localStorage.getItem('local_user_vocabulary');
+    let list: VocabularyItem[] = localVocab ? JSON.parse(localVocab) : [];
+    list = list.filter(v => v.id !== vocabId);
+    list.unshift(fullItem);
+    localStorage.setItem('local_user_vocabulary', JSON.stringify(list));
+    return vocabId;
+  }
+};
+
+/**
+ * Fetch Vocabulary items for a user
+ */
+export const fetchVocabularyItems = async (
+  userId: string,
+  documentId?: string
+): Promise<VocabularyItem[]> => {
+  const path = 'user_vocabulary';
+  try {
+    let q;
+    if (documentId) {
+      q = query(collection(db, path), where('userId', '==', userId), where('documentId', '==', documentId));
+    } else {
+      q = query(collection(db, path), where('userId', '==', userId));
+    }
+
+    const snap = await getDocs(q);
+    const onlineList = snap.docs.map(d => d.data() as VocabularyItem);
+
+    const localVocab = localStorage.getItem('local_user_vocabulary');
+    const localList: VocabularyItem[] = localVocab ? JSON.parse(localVocab) : [];
+
+    const map = new Map<string, VocabularyItem>();
+    localList.forEach(v => {
+      if (!documentId || v.documentId === documentId) {
+        if (v.userId === userId) map.set(v.id, v);
+      }
+    });
+    onlineList.forEach(v => map.set(v.id, v));
+
+    const result = Array.from(map.values());
+    result.sort((a, b) => b.createdAt - a.createdAt);
+    return result;
+  } catch (err: any) {
+    console.warn('fetchVocabularyItems fallback triggered:', err.message || err);
+    if (err?.code === 'permission-denied' || String(err).includes('permission')) {
+      handleFirestoreError(err, OperationType.LIST, path);
+    }
+    const localVocab = localStorage.getItem('local_user_vocabulary');
+    const localList: VocabularyItem[] = localVocab ? JSON.parse(localVocab) : [];
+    return localList.filter(v => v.userId === userId && (!documentId || v.documentId === documentId));
+  }
+};
+
+/**
+ * Delete a Vocabulary item by ID
+ */
+export const deleteVocabularyItem = async (id: string): Promise<void> => {
+  const path = 'user_vocabulary';
+  try {
+    if (id.startsWith('local_')) {
+      const localVocab = localStorage.getItem('local_user_vocabulary');
+      if (localVocab) {
+        let list: VocabularyItem[] = JSON.parse(localVocab);
+        list = list.filter(v => v.id !== id);
+        localStorage.setItem('local_user_vocabulary', JSON.stringify(list));
+      }
+      return;
+    }
+    const docRef = doc(db, path, id);
+    await deleteDoc(docRef);
+
+    const localVocab = localStorage.getItem('local_user_vocabulary');
+    if (localVocab) {
+      let list: VocabularyItem[] = JSON.parse(localVocab);
+      list = list.filter(v => v.id !== id);
+      localStorage.setItem('local_user_vocabulary', JSON.stringify(list));
+    }
+  } catch (err: any) {
+    console.warn(`deleteVocabularyItem error for ${id}:`, err.message || err);
+    if (err?.code === 'permission-denied' || String(err).includes('permission')) {
+      handleFirestoreError(err, OperationType.DELETE, path);
+    }
+    const localVocab = localStorage.getItem('local_user_vocabulary');
+    if (localVocab) {
+      let list: VocabularyItem[] = JSON.parse(localVocab);
+      list = list.filter(v => v.id !== id);
+      localStorage.setItem('local_user_vocabulary', JSON.stringify(list));
     }
   }
 };

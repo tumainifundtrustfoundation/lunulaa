@@ -325,6 +325,22 @@
         "createdAt": { "type": "integer" }
       },
       "required": ["id", "userId", "word", "createdAt"]
+    },
+    "HighlightAnnotation": {
+      "title": "Highlight Annotation",
+      "description": "Highlighted text snippets and associated personal notes saved for specific documents.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "documentId": { "type": "string" },
+        "documentTitle": { "type": "string" },
+        "text": { "type": "string" },
+        "note": { "type": "string" },
+        "color": { "type": "string" },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["id", "userId", "documentId", "documentTitle", "text", "color", "createdAt"]
     }
   },
   "firestore": {
@@ -431,6 +447,12 @@
         "$ref": "#/entities/VocabularyItem"
       },
       "description": "Personal vocabulary words/phrases saved for revision."
+    },
+    "/highlights/{hId}": {
+      "schema": {
+        "$ref": "#/entities/HighlightAnnotation"
+      },
+      "description": "Highlighted text snippets and personal notes associated with document IDs."
     }
   }
 }

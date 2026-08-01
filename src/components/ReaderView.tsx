@@ -32,9 +32,11 @@ import {
   RefreshCw,
   X,
   Filter,
-  EyeOff
+  EyeOff,
+  Pencil,
+  Copy
 } from 'lucide-react';
-import { fetchDocuments, saveHighlight, fetchHighlights, deleteHighlight, toggleBookmark, fetchUserBookmarks, submitFeedback, updateDocument, savePDFPageNote, fetchPDFPageNotes, deletePDFPageNote, saveVocabularyItem, fetchVocabularyItems, deleteVocabularyItem } from '../firebase';
+import { fetchDocuments, saveHighlight, fetchHighlights, updateHighlightNote, deleteHighlight, toggleBookmark, fetchUserBookmarks, submitFeedback, updateDocument, savePDFPageNote, fetchPDFPageNotes, deletePDFPageNote, saveVocabularyItem, fetchVocabularyItems, deleteVocabularyItem } from '../firebase';
 import { DocumentMetadata, HighlightAnnotation, UserBookmark, PDFPageNote, VocabularyItem } from '../types';
 import FlashcardsModal from './FlashcardsModal';
 import PDFPreviewer from './PDFPreviewer';
@@ -118,6 +120,10 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
   const [highlightColor, setHighlightColor] = useState('bg-yellow-100 text-yellow-900 border-yellow-300');
   const [highlightNote, setHighlightNote] = useState('');
   const [savingHighlight, setSavingHighlight] = useState(false);
+  const [editingHighlightId, setEditingHighlightId] = useState<string | null>(null);
+  const [editingHighlightNoteText, setEditingHighlightNoteText] = useState('');
+  const [copiedHighlightId, setCopiedHighlightId] = useState<string | null>(null);
+  const [annotationSearchQuery, setAnnotationSearchQuery] = useState('');
   const [smartNotes, setSmartNotes] = useState('');
   const [loadingSmartNotes, setLoadingSmartNotes] = useState(false);
 
@@ -390,6 +396,28 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
     } catch (e) {
       console.error('Error deleting highlight:', e);
     }
+  };
+
+  const handleStartEditHighlight = (highlight: HighlightAnnotation) => {
+    setEditingHighlightId(highlight.id);
+    setEditingHighlightNoteText(highlight.note || '');
+  };
+
+  const handleUpdateHighlight = async (id: string) => {
+    try {
+      await updateHighlightNote(id, editingHighlightNoteText.trim());
+      setEditingHighlightId(null);
+      setEditingHighlightNoteText('');
+      await loadHighlights();
+    } catch (e) {
+      console.error('Error updating highlight note:', e);
+    }
+  };
+
+  const handleCopyHighlightText = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedHighlightId(id);
+    setTimeout(() => setCopiedHighlightId(null), 2000);
   };
 
   const fetchSmartNotesContent = async () => {
@@ -1537,40 +1565,132 @@ export default function ReaderView({ documentId, onNavigate, userProfile }: Read
             </div>
           )}
 
-          {/* Highlights List inside Document */}
-          {highlights.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4 animate-fade-in">
-              <div className="flex items-center justify-between border-b border-slate-50 pb-2.5">
-                <span className="font-bold text-slate-900 text-xs uppercase tracking-wider">Highlight Zangu ({highlights.length})</span>
-                <span className="text-[8px] bg-cyan-100 text-cyan-800 font-extrabold px-2 py-0.5 rounded-full uppercase">SALAMA</span>
+          {/* Highlights & Personal Notes Annotation List */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4 animate-fade-in">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center gap-1.5">
+                <Highlighter size={14} className="text-cyan-600" />
+                <span className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                  Annotations ({highlights.length})
+                </span>
               </div>
-
-              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-                {highlights.map(h => (
-                  <div key={h.id} className="p-3 bg-slate-50 border border-slate-100 rounded-2xl relative group space-y-1.5">
-                    <button
-                      onClick={() => handleDeleteHighlight(h.id)}
-                      className="absolute top-2 right-2 text-slate-300 hover:text-red-500 p-1 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
-                      title="Futa Highlight"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                    <div className={`${h.color.split(' ')[0]} p-1 px-1.5 rounded text-[10px] font-semibold text-slate-800 italic leading-snug line-clamp-3`}>
-                      "{h.text}"
-                    </div>
-                    {h.note && (
-                      <p className="text-[10px] text-slate-600 font-semibold bg-white border border-slate-200/60 p-1.5 px-2 rounded-lg flex items-start gap-1">
-                        <span className="text-cyan-500">📝</span> {h.note}
-                      </p>
-                    )}
-                    <span className="text-[8px] text-slate-400 font-semibold block uppercase">
-                      {new Date(h.createdAt).toLocaleDateString('sw-TZ')}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <span className="text-[8px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full uppercase flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                Firestore
+              </span>
             </div>
-          )}
+
+            {highlights.length > 1 && (
+              <div className="relative">
+                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Tafuta kwenye notes & highlights..."
+                  value={annotationSearchQuery}
+                  onChange={e => setAnnotationSearchQuery(e.target.value)}
+                  className="w-full text-[10px] pl-7 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-cyan-500 font-medium"
+                />
+              </div>
+            )}
+
+            {highlights.length === 0 ? (
+              <div className="py-4 text-center space-y-1.5">
+                <p className="text-[10px] text-slate-400 font-semibold uppercase">
+                  Bado hujatengeneza annotation kwa nyaraka hii.
+                </p>
+                <p className="text-[9px] text-slate-400 italic">
+                  Chagua neno au sentensi yoyote na ubonyeze Highlight.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                {highlights
+                  .filter(h => 
+                    !annotationSearchQuery.trim() ||
+                    h.text.toLowerCase().includes(annotationSearchQuery.toLowerCase()) ||
+                    (h.note && h.note.toLowerCase().includes(annotationSearchQuery.toLowerCase()))
+                  )
+                  .map(h => (
+                    <div key={h.id} className="p-3 bg-slate-50/80 border border-slate-200/70 rounded-2xl relative group space-y-2 hover:border-cyan-300 transition-all">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className={`${h.color.split(' ')[0]} p-1.5 px-2 rounded-xl text-[11px] font-medium text-slate-800 italic leading-snug flex-1 border border-slate-200/50`}>
+                          "{h.text}"
+                        </div>
+                        <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100">
+                          <button
+                            onClick={() => handleCopyHighlightText(h.text, h.id)}
+                            className="text-slate-400 hover:text-cyan-600 p-1 rounded-lg transition-all"
+                            title="Nakili maandishi (Copy)"
+                          >
+                            {copiedHighlightId === h.id ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                          </button>
+                          <button
+                            onClick={() => handleStartEditHighlight(h)}
+                            className="text-slate-400 hover:text-slate-800 p-1 rounded-lg transition-all"
+                            title="Hariri nota ya annotation"
+                          >
+                            <Pencil size={12} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteHighlight(h.id)}
+                            className="text-slate-400 hover:text-red-500 p-1 rounded-lg transition-all"
+                            title="Futa Highlight"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {editingHighlightId === h.id ? (
+                        <div className="space-y-1.5 pt-1">
+                          <input
+                            type="text"
+                            value={editingHighlightNoteText}
+                            onChange={e => setEditingHighlightNoteText(e.target.value)}
+                            placeholder="Weka dokezo/kumbukumbu yako..."
+                            className="w-full text-xs p-2 bg-white border border-cyan-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/20 font-medium text-slate-800"
+                            autoFocus
+                          />
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => setEditingHighlightId(null)}
+                              className="px-2.5 py-1 text-[9px] font-bold text-slate-500 hover:text-slate-800 uppercase"
+                            >
+                              Ghairi
+                            </button>
+                            <button
+                              onClick={() => handleUpdateHighlight(h.id)}
+                              className="px-3 py-1 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-[9px] font-bold uppercase tracking-wider"
+                            >
+                              Hifadhi
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        h.note && (
+                          <div className="text-[10px] text-slate-700 font-semibold bg-white border border-slate-200/80 p-2 rounded-xl flex items-start gap-1.5 shadow-2xs">
+                            <span className="text-cyan-600 shrink-0">📝</span>
+                            <span className="leading-snug">{h.note}</span>
+                          </div>
+                        )
+                      )}
+
+                      <div className="flex items-center justify-between pt-0.5 text-[8px] text-slate-400 font-semibold uppercase">
+                        <span>{new Date(h.createdAt).toLocaleDateString('sw-TZ', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                        {!h.note && editingHighlightId !== h.id && (
+                          <button
+                            onClick={() => handleStartEditHighlight(h)}
+                            className="text-cyan-600 hover:underline flex items-center gap-0.5"
+                          >
+                            + Ongeza Dokezo
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
 
           <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
             <span className="text-[10px] bg-cyan-50 border border-cyan-100 text-cyan-700 font-extrabold px-2.5 py-0.5 rounded-full uppercase block w-fit">

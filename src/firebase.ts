@@ -1593,6 +1593,43 @@ export const deleteHighlight = async (id: string): Promise<void> => {
 };
 
 /**
+ * Update an existing highlight annotation's note or color in Firestore
+ */
+export const updateHighlightNote = async (id: string, note: string, color?: string): Promise<void> => {
+  try {
+    if (id.startsWith('local_')) {
+      const localHighlights = localStorage.getItem('local_highlights');
+      if (localHighlights) {
+        let list: HighlightAnnotation[] = JSON.parse(localHighlights);
+        list = list.map(h => h.id === id ? { ...h, note, ...(color ? { color } : {}) } : h);
+        localStorage.setItem('local_highlights', JSON.stringify(list));
+      }
+      return;
+    }
+    const docRef = doc(db, 'highlights', id);
+    const updates: Partial<HighlightAnnotation> = { note };
+    if (color) updates.color = color;
+    await updateDoc(docRef, updates);
+
+    // Also update local storage if present
+    const localHighlights = localStorage.getItem('local_highlights');
+    if (localHighlights) {
+      let list: HighlightAnnotation[] = JSON.parse(localHighlights);
+      list = list.map(h => h.id === id ? { ...h, note, ...(color ? { color } : {}) } : h);
+      localStorage.setItem('local_highlights', JSON.stringify(list));
+    }
+  } catch (err: any) {
+    console.warn(`updateHighlightNote error for ${id}:`, err.message || err);
+    const localHighlights = localStorage.getItem('local_highlights');
+    if (localHighlights) {
+      let list: HighlightAnnotation[] = JSON.parse(localHighlights);
+      list = list.map(h => h.id === id ? { ...h, note, ...(color ? { color } : {}) } : h);
+      localStorage.setItem('local_highlights', JSON.stringify(list));
+    }
+  }
+};
+
+/**
  * Save or update a PDF page note attached to a specific page
  */
 export const savePDFPageNote = async (

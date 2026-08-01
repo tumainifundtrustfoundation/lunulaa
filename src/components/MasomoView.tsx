@@ -79,6 +79,8 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
   // Navigation & Categorization states
   const [activeLevelTab, setActiveLevelTab] = useState<'all' | 'msingi' | 'olevel' | 'alevel' | 'favorites'>('all');
   const [activeStreamTab, setActiveStreamTab] = useState<'all' | 'PCB' | 'HGE' | 'EGM'>('all');
+  const [activeFormFilter, setActiveFormFilter] = useState<'all' | 'msingi' | 'form1' | 'form2' | 'form3' | 'form4' | 'form5' | 'form6'>('all');
+  const [activeSubjectFilter, setActiveSubjectFilter] = useState<string>('all');
   const [openSubject, setOpenSubject] = useState<string | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   
@@ -997,9 +999,13 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
 
   const filteredLevels = activeLevelTab === 'favorites' 
     ? [] 
-    : academicData.filter(level => 
-        activeLevelTab === 'all' || level.id === activeLevelTab
-      );
+    : academicData.filter(level => {
+        if (activeFormFilter === 'msingi' && level.id !== 'msingi') return false;
+        if (['form1', 'form2', 'form3', 'form4'].includes(activeFormFilter) && level.id !== 'olevel') return false;
+        if (['form5', 'form6'].includes(activeFormFilter) && level.id !== 'alevel') return false;
+        if (activeLevelTab === 'all') return true;
+        return level.id === activeLevelTab;
+      });
 
   return (
     <div id="masomo-view" className="space-y-6 animate-fade-in text-slate-800 bg-slate-50 min-h-screen pb-12">
@@ -1167,66 +1173,38 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
         </div>
       </div>
 
-      {/* ── Level Filter Navigation Tabs ── */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Ngazi ya Shule</h3>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { id: 'all', name: 'Zote' },
-                { id: 'msingi', name: 'Shule ya Msingi' },
-                { id: 'olevel', name: 'Kidato 1-4' },
-                { id: 'alevel', name: 'Kidato 5-6' },
-                { id: 'favorites', name: 'Zilizopendwa ★' }
-              ].map((tab) => (
-                <motion.button
-                  key={tab.id}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => {
-                    setActiveLevelTab(tab.id as any);
-                    setOpenSubject(null);
-                    setSelectedTopic(null);
-                  }}
-                  className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all ${
-                    activeLevelTab === tab.id 
-                      ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/20' 
-                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-100'
-                  }`}
-                >
-                  {tab.name}
-                </motion.button>
-              ))}
-            </div>
-          </div>
-
-          {activeLevelTab === 'alevel' && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-1"
-            >
-              <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Mchepuo (Stream)</h3>
+      {/* ── Level & Quick Filter Navigation Tabs ── */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
+        <div className="flex flex-col gap-4">
+          
+          {/* Main Level Tabs */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div className="space-y-1">
+              <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                <BookOpen size={12} className="text-cyan-600" />
+                Ngazi ya Shule
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {[
                   { id: 'all', name: 'Zote' },
-                  { id: 'PCB', name: 'PCB' },
-                  { id: 'HGE', name: 'HGE' },
-                  { id: 'EGM', name: 'EGM' }
+                  { id: 'msingi', name: 'Shule ya Msingi' },
+                  { id: 'olevel', name: 'Kidato 1-4 (O-Level)' },
+                  { id: 'alevel', name: 'Kidato 5-6 (A-Level)' },
+                  { id: 'favorites', name: 'Zilizopendwa ★' }
                 ].map((tab) => (
                   <motion.button
                     key={tab.id}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => {
-                      setActiveStreamTab(tab.id as any);
+                      setActiveLevelTab(tab.id as any);
+                      setActiveFormFilter('all');
                       setOpenSubject(null);
                       setSelectedTopic(null);
                     }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                      activeStreamTab === tab.id 
-                        ? 'bg-amber-400 text-amber-950 shadow-md shadow-amber-400/20' 
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                      activeLevelTab === tab.id 
+                        ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/20' 
                         : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-100'
                     }`}
                   >
@@ -1234,8 +1212,133 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
                   </motion.button>
                 ))}
               </div>
-            </motion.div>
-          )}
+            </div>
+
+            {activeLevelTab === 'alevel' && (
+              <motion.div 
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-1"
+              >
+                <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Mchepuo (Stream)</h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: 'all', name: 'Zote' },
+                    { id: 'PCB', name: 'PCB' },
+                    { id: 'HGE', name: 'HGE' },
+                    { id: 'EGM', name: 'EGM' }
+                  ].map((tab) => (
+                    <motion.button
+                      key={tab.id}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => {
+                        setActiveStreamTab(tab.id as any);
+                        setOpenSubject(null);
+                        setSelectedTopic(null);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-extrabold transition-all ${
+                        activeStreamTab === tab.id 
+                          ? 'bg-amber-400 text-amber-950 shadow-md shadow-amber-400/20' 
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-100'
+                      }`}
+                    >
+                      {tab.name}
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Quick Form/Kidato Filter Bar */}
+          <div className="space-y-1.5">
+            <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+              <Sparkles size={12} className="text-amber-500" />
+              Kichujio cha Haraka cha Kidato (Form Filter)
+            </h3>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { id: 'all', label: 'Kidato Zote' },
+                { id: 'msingi', label: 'Darasa 5-7 (Msingi)' },
+                { id: 'form1', label: 'Kidato cha 1 (Form I)' },
+                { id: 'form2', label: 'Kidato cha 2 (Form II)' },
+                { id: 'form3', label: 'Kidato cha 3 (Form III)' },
+                { id: 'form4', label: 'Kidato cha 4 (Form IV)' },
+                { id: 'form5', label: 'Kidato cha 5 (Form V)' },
+                { id: 'form6', label: 'Kidato cha 6 (Form VI)' }
+              ].map((form) => {
+                const isActive = activeFormFilter === form.id;
+                return (
+                  <button
+                    key={form.id}
+                    onClick={() => {
+                      setActiveFormFilter(form.id as any);
+                      if (['form1', 'form2', 'form3', 'form4'].includes(form.id)) {
+                        setActiveLevelTab('olevel');
+                      } else if (['form5', 'form6'].includes(form.id)) {
+                        setActiveLevelTab('alevel');
+                      } else if (form.id === 'msingi') {
+                        setActiveLevelTab('msingi');
+                      } else {
+                        setActiveLevelTab('all');
+                      }
+                      setOpenSubject(null);
+                      setSelectedTopic(null);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition-all border ${
+                      isActive 
+                        ? 'bg-slate-900 text-amber-300 border-slate-900 shadow-sm' 
+                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'
+                    }`}
+                  >
+                    {form.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Quick Subject Pills Filter Bar */}
+          <div className="space-y-1.5 pt-1">
+            <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+              <BookMarked size={12} className="text-emerald-500" />
+              Chagua Somo kwa Haraka
+            </h3>
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { id: 'all', label: 'Masomo Yote' },
+                { id: 'math', label: '📐 Hisabati / Math' },
+                { id: 'physics', label: '⚡ Physics' },
+                { id: 'chemistry', label: '🧪 Chemistry' },
+                { id: 'biology', label: '🔬 Biology' },
+                { id: 'history', label: '📜 History' },
+                { id: 'geography', label: '🌍 Geography' },
+                { id: 'civics', label: '🏛️ Civics' },
+                { id: 'economics', label: '📈 Economics / GS' }
+              ].map((subj) => {
+                const isActive = activeSubjectFilter === subj.id;
+                return (
+                  <button
+                    key={subj.id}
+                    onClick={() => {
+                      setActiveSubjectFilter(subj.id);
+                      setOpenSubject(null);
+                      setSelectedTopic(null);
+                    }}
+                    className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all border ${
+                      isActive 
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' 
+                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'
+                    }`}
+                  >
+                    {subj.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -1350,10 +1453,19 @@ export default function MasomoView({ onNavigate, userProfile }: MasomoViewProps)
               </div>
             ) : (
               filteredLevels.map((level) => {
-                // Filter subjects if level is alevel and a stream is selected
-                const displaySubjects = level.id === 'alevel' && activeStreamTab !== 'all'
-                  ? level.subjects.filter(s => (streams as any)[activeStreamTab].includes(s.name))
-                  : level.subjects;
+                // Filter subjects based on stream and activeSubjectFilter
+                const displaySubjects = level.subjects.filter(s => {
+                  if (level.id === 'alevel' && activeStreamTab !== 'all') {
+                    const allowed = (streams as any)[activeStreamTab];
+                    if (!allowed || !allowed.includes(s.name)) return false;
+                  }
+                  if (activeSubjectFilter !== 'all') {
+                    const lowerSubj = s.name.toLowerCase();
+                    const lowerFilter = activeSubjectFilter.toLowerCase();
+                    if (!lowerSubj.includes(lowerFilter)) return false;
+                  }
+                  return true;
+                });
 
                 if (displaySubjects.length === 0) return null;
 

@@ -65,7 +65,7 @@ const INITIAL_MOCK_STUDENTS: MockStudent[] = [
 ];
 
 export default function MwalimuHubView() {
-  const [activeTab, setActiveTab] = useState<'mchakataji' | 'nyaraka' | 'ratiba' | 'maelewano' | 'sms-config'>('mchakataji');
+  const [activeTab, setActiveTab] = useState<'mchakataji' | 'nyaraka' | 'ratiba' | 'maelewano'>('mchakataji');
   
   // Results Processor State
   const [students, setStudents] = useState<MockStudent[]>(INITIAL_MOCK_STUDENTS);
@@ -75,78 +75,7 @@ export default function MwalimuHubView() {
   const [progress, setProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<MockStudent | null>(null);
-  const [smsLog, setSmsLog] = useState<string[]>([]);
-  const [sendingSms, setSendingSms] = useState(false);
-  const [smsProgress, setSmsProgress] = useState(0);
-  const [smsSentCount, setSmsSentCount] = useState(0);
   const [totalSimulatedCount, setTotalSimulatedCount] = useState(10); // can scale up to 2150
-
-  // SMS Gateway Real Config States
-  const [smsProvider, setSmsProvider] = useState<'simulation' | 'africastalking' | 'infobip'>('simulation');
-  const [smsApiKey, setSmsApiKey] = useState('');
-  const [smsUsername, setSmsUsername] = useState('sandbox');
-  const [smsSenderId, setSmsSenderId] = useState('');
-  const [smsInfobipBaseUrl, setSmsInfobipBaseUrl] = useState('');
-  const [hasApiKey, setHasApiKey] = useState(false);
-  const [smsConfigLoading, setSmsConfigLoading] = useState(false);
-  const [smsConfigSaving, setSmsConfigSaving] = useState(false);
-
-  const fetchSMSConfig = async () => {
-    setSmsConfigLoading(true);
-    try {
-      const response = await fetch('/api/sms/config');
-      if (response.ok) {
-        const data = await response.json();
-        setSmsProvider(data.smsProvider || 'simulation');
-        setSmsUsername(data.smsUsername || 'sandbox');
-        setSmsSenderId(data.smsSenderId || '');
-        setSmsInfobipBaseUrl(data.smsInfobipBaseUrl || '');
-        setHasApiKey(data.hasApiKey || false);
-        if (data.hasApiKey) {
-          setSmsApiKey('••••••••••••••••');
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching SMS config:', error);
-    } finally {
-      setSmsConfigLoading(false);
-    }
-  };
-
-  const handleSaveSMSConfig = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSmsConfigSaving(true);
-    try {
-      const response = await fetch('/api/sms/config', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          smsProvider,
-          smsApiKey: smsApiKey === '••••••••••••••••' ? undefined : smsApiKey,
-          smsUsername,
-          smsSenderId,
-          smsInfobipBaseUrl
-        })
-      });
-      if (response.ok) {
-        alert('Mipangilio ya SMS imehifadhiwa kikamilifu kwenye seva!');
-        fetchSMSConfig();
-      } else {
-        const data = await response.json();
-        alert(`Imeshindwa kuhifadhi: ${data.error || data.message}`);
-      }
-    } catch (error) {
-      alert('Hitilafu imetokea wakati wa kuhifadhi mipangilio.');
-    } finally {
-      setSmsConfigSaving(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSMSConfig();
-  }, []);
   
   // Lesson Plan State
   const [selectedSubject, setSelectedSubject] = useState('Physics');
@@ -264,124 +193,6 @@ export default function MwalimuHubView() {
         setSelectedStudent(ranked[0]);
       }
     }, 450);
-  };
-
-  // Real SMS Gateway Sending in Bulk
-  const handleSendSMS = async () => {
-    setSendingSms(true);
-    setSmsProgress(0);
-    setSmsSentCount(0);
-    setSmsLog([`[ANZA] Kuanzisha utumaji wa matokeo kwa wazazi kupitia SMS ya kikundi...`]);
-
-    const bulkMessages = students.map(student => {
-      const text = `Ndugu Mzazi wa ${student.name} (${student.regNo}). Matokeo ya Mtihani: CIV:${calculateGrades(student.civics).grade}, HIST:${calculateGrades(student.history).grade}, GEO:${calculateGrades(student.geography).grade}, KISW:${calculateGrades(student.kiswahili).grade}, ENGL:${calculateGrades(student.english).grade}, PHY:${calculateGrades(student.physics).grade}, CHEM:${calculateGrades(student.chemistry).grade}, BIO:${calculateGrades(student.biology).grade}, MATH:${calculateGrades(student.basicMath).grade}. Wastani: ${student.avg}%, Nafasi: ${student.rank} kati ya ${totalSimulatedCount}. Division: ${student.division} (Pointi ${student.points}). Lupanulla Elimu Hub.`;
-      return {
-        phone: student.phone || '0712345678',
-        text: text,
-        name: student.name
-      };
-    });
-
-    try {
-      let progressVal = 0;
-      const progressInterval = setInterval(() => {
-        progressVal += 15;
-        if (progressVal >= 90) {
-          clearInterval(progressInterval);
-        } else {
-          setSmsProgress(progressVal);
-          const processedCount = Math.floor((progressVal / 100) * totalSimulatedCount);
-          setSmsSentCount(processedCount);
-          setSmsLog(l => [...l, `Inatuma ujumbe kwa kundi la wazazi... (${processedCount}/${totalSimulatedCount})`]);
-        }
-      }, 350);
-
-      const response = await fetch('/api/sms/send-bulk', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          messages: bulkMessages
-        })
-      });
-
-      clearInterval(progressInterval);
-
-      if (response.ok) {
-        const data = await response.json();
-        setSmsProgress(100);
-        setSmsSentCount(totalSimulatedCount);
-        if (data.method === 'simulation') {
-          setSmsLog(l => [
-            ...l,
-            ...data.logs,
-            `[KIKAMILIFU] SMS zote ${totalSimulatedCount} za wazazi zimeandaliwa kwa ufanisi katika mode ya Majaribio (Simulation)!`
-          ]);
-          alert(`Ujumbe wa matokeo wa wanafunzi wote umeandaliwa kwa ufanisi (Mode ya Majaribio/Simulation).`);
-        } else {
-          setSmsLog(l => [
-            ...l,
-            `[KIKAMILIFU] SMS zote ${bulkMessages.length} zimetumwa kikamilifu kwa wazazi kupitia ${data.method}!`
-          ]);
-          alert(`SMS zote zimetumwa kwa mafanikio kupitia ${data.method}!`);
-        }
-      } else {
-        const data = await response.json();
-        setSmsProgress(0);
-        setSmsLog(l => [...l, `[MAKOSA] Utumaji wa kikundi umeshindwa: ${data.error || data.message}`]);
-        alert(`Ujumbe haukuweza kutumwa: ${data.error || data.message}`);
-      }
-    } catch (error) {
-      setSmsProgress(0);
-      setSmsLog(l => [...l, `[MAKOSA] Mawasiliano na Gateway yamefeli.`]);
-      alert('Mawasiliano na seva yamekatika.');
-    } finally {
-      setSendingSms(false);
-    }
-  };
-
-  const handleSendSingleSMS = async (student: MockStudent) => {
-    if (!student) return;
-    const parentPhone = student.phone || '0712345678';
-    
-    const text = `Ndugu Mzazi wa ${student.name} (${student.regNo}). Matokeo ya Mtihani: CIV:${calculateGrades(student.civics).grade}, HIST:${calculateGrades(student.history).grade}, GEO:${calculateGrades(student.geography).grade}, KISW:${calculateGrades(student.kiswahili).grade}, ENGL:${calculateGrades(student.english).grade}, PHY:${calculateGrades(student.physics).grade}, CHEM:${calculateGrades(student.chemistry).grade}, BIO:${calculateGrades(student.biology).grade}, MATH:${calculateGrades(student.basicMath).grade}. Wastani: ${student.avg}%, Nafasi: ${student.rank} kati ya ${totalSimulatedCount}. Division: ${student.division} (Pointi ${student.points}). Lupanulla Elimu Hub.`;
-
-    setSmsLog(l => [...l, `[ANZA] Inatuma SMS ya matokeo ya ${student.name} kwenda kwa mzazi (${parentPhone})...`]);
-    try {
-      const response = await fetch('/api/sms/send-bulk', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              phone: parentPhone,
-              text: text,
-              name: student.name
-            }
-          ]
-        })
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        if (data.method === 'simulation') {
-          setSmsLog(l => [...l, `[SIMULATION] SMS ya mzazi wa ${student.name} imeandaliwa kikamilifu kwenye mode ya majaribio!`]);
-          alert(`[SIMULATION] SMS imeandaliwa kikamilifu! (Mode: Majaribio)\n\nSimu: ${parentPhone}\nUjumbe:\n${text}`);
-        } else {
-          setSmsLog(l => [...l, `[FANIKIO] SMS imetumwa kwa ${student.name} kupitia ${data.method}!`]);
-          alert(`[FANIKIO] SMS imetumwa kwa Mzazi wa ${student.name} kupitia ${data.method}!`);
-        }
-      } else {
-        setSmsLog(l => [...l, `[MAKOSA] Imeshindwa kutuma SMS ya ${student.name}: ${data.error || data.message}`]);
-        alert(`Imeshindwa kutuma: ${data.error || data.message}`);
-      }
-    } catch (error) {
-      setSmsLog(l => [...l, `[MAKOSA] Itifaki ya mtandao imeshindwa kwa SMS ya ${student.name}`]);
-      alert('Hitilafu ya mtandao imetokea wakati wa kutuma SMS.');
-    }
   };
 
   // Generate Lesson Plan
@@ -565,18 +376,6 @@ export default function MwalimuHubView() {
             <Coins size={15} className={activeTab === 'maelewano' ? 'text-cyan-400' : 'text-slate-400'} />
             Agiza Mfumo &amp; Maelewano
           </button>
-
-          <button
-            onClick={() => setActiveTab('sms-config')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider shrink-0 transition-all cursor-pointer ${
-              activeTab === 'sms-config' 
-                ? 'bg-slate-900 text-white shadow-md' 
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <Settings size={15} className={activeTab === 'sms-config' ? 'text-cyan-400' : 'text-slate-400'} />
-            Usanidi wa SMS
-          </button>
         </div>
       </div>
 
@@ -621,24 +420,29 @@ export default function MwalimuHubView() {
 
                     <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs font-semibold space-y-3">
                       <h4 className="text-slate-700 font-bold uppercase tracking-wide flex items-center justify-between">
-                        <span>Hatua ya 2: Tuma SMS kwa Wazazi</span>
+                        <span>Hatua ya 2: Shirikisha Matokeo</span>
                         {processed && <span className="bg-emerald-100 text-emerald-800 text-[9px] font-black px-2 py-0.5 rounded uppercase">Tayari</span>}
                       </h4>
-                      <p className="text-[11px] text-slate-500 leading-relaxed font-medium">Tuma ujumbe mfupi wa SMS kwa simu za wazazi wote wa wanafunzi 2,150 wenye mchanganuo kamili wa matokeo ya watoto wao.</p>
+                      <p className="text-[11px] text-slate-500 leading-relaxed font-medium">Shirikisha matokeo ya wanafunzi 2,150 kwa wazazi kupitia WhatsApp au pakua muhtasari kamili.</p>
                       
                       <button
-                        onClick={handleSendSMS}
-                        disabled={!processed || sendingSms}
-                        className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                        onClick={() => {
+                          if (selectedStudent) {
+                            const text = encodeURIComponent(`Ndugu Mzazi wa ${selectedStudent.name} (${selectedStudent.regNo}). Matokeo ya Mtihani: Wastani: ${selectedStudent.avg}%, Nafasi: ${selectedStudent.rank} kati ya 2150. Division: ${selectedStudent.division} (Pointi ${selectedStudent.points}). Lupanulla Elimu Hub.`);
+                            window.open(`https://wa.me/?text=${text}`, '_blank');
+                          }
+                        }}
+                        disabled={!processed}
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs disabled:opacity-50"
                       >
-                        <Send size={14} />
-                        {sendingSms ? 'Inatuma SMS...' : 'Tuma SMS kwa Wazazi Wote'}
+                        <Share2 size={14} />
+                        Shirikisha Matokeo WhatsApp
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Simulated SMS Log Panel */}
+                {/* Processing Log Panel */}
                 <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
                   <h3 className="font-display font-black text-slate-900 text-xs uppercase tracking-wider flex items-center justify-between">
                     <span>Ripoti za Shughuli (Live Log)</span>
@@ -646,17 +450,12 @@ export default function MwalimuHubView() {
                   </h3>
                   
                   <div className="bg-slate-950 p-4 rounded-2xl font-mono text-[10px] text-slate-300 h-48 overflow-y-auto space-y-1.5 scrollbar-none">
-                    {processingLog.length === 0 && smsLog.length === 0 ? (
+                    {processingLog.length === 0 ? (
                       <span className="text-slate-500 block italic">Mfumo upo tayari kufanya kazi. Bofya kitufe cha kupakia hapo juu ili kuanza.</span>
                     ) : (
-                      <>
-                        {processingLog.map((log, idx) => (
-                          <div key={idx} className="text-emerald-400">{log}</div>
-                        ))}
-                        {smsLog.map((log, idx) => (
-                          <div key={idx} className="text-cyan-400">{log}</div>
-                        ))}
-                      </>
+                      processingLog.map((log, idx) => (
+                        <div key={idx} className="text-emerald-400">{log}</div>
+                      ))
                     )}
                   </div>
                 </div>
@@ -679,22 +478,22 @@ export default function MwalimuHubView() {
                     <span className="text-emerald-600 font-black text-lg block mt-1">{processed ? '94.2%' : '0%'}</span>
                   </div>
                   <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">SMS Zilizotumwa</span>
-                    <span className="text-cyan-600 font-black text-lg block mt-1">{smsSentCount.toLocaleString()}</span>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Kiwango cha Division I</span>
+                    <span className="text-cyan-600 font-black text-lg block mt-1">{processed ? '482 Students' : '--'}</span>
                   </div>
                 </div>
 
                 {/* Progress bar */}
-                {(isProcessing || sendingSms) && (
+                {isProcessing && (
                   <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-2">
                     <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                      <span>{isProcessing ? 'Kuchakata Matokeo ya Wanafunzi 2,150...' : 'Kutuma SMS kwa Wazazi...'}</span>
-                      <span>{isProcessing ? progress : smsProgress}%</span>
+                      <span>Kuchakata Matokeo ya Wanafunzi 2,150...</span>
+                      <span>{progress}%</span>
                     </div>
                     <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                       <div 
                         className="bg-cyan-500 h-full transition-all duration-300" 
-                        style={{ width: `${isProcessing ? progress : smsProgress}%` }}
+                        style={{ width: `${progress}%` }}
                       />
                     </div>
                   </div>
@@ -853,40 +652,40 @@ export default function MwalimuHubView() {
                       </div>
                     </div>
 
-                    {/* Simulated Phone SMS Display */}
+                    {/* Simulated Report Preview */}
                     <div className="bg-slate-900 p-6 rounded-3xl shadow-xl relative overflow-hidden border border-slate-800 text-white flex flex-col justify-between">
                       <div className="space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                           <div className="flex items-center gap-2">
-                            <Phone size={14} className="text-cyan-400" />
-                            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">Simulated SMS Delivery</span>
+                            <FileText size={14} className="text-cyan-400" />
+                            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">Muhtasari wa Mzazi</span>
                           </div>
-                          <span className="bg-cyan-500/10 text-cyan-400 text-[9px] font-bold px-2 py-0.5 rounded border border-cyan-500/20">LIVE PREVIEW</span>
+                          <span className="bg-cyan-500/10 text-cyan-400 text-[9px] font-bold px-2 py-0.5 rounded border border-cyan-500/20">REPORT PREVIEW</span>
                         </div>
 
                         {/* Interactive Message Bubble */}
                         <div className="space-y-2">
-                          <span className="text-[9px] text-slate-400 font-extrabold block uppercase tracking-wider">Kutoka: LUPANULLA SMS</span>
+                          <span className="text-[9px] text-slate-400 font-extrabold block uppercase tracking-wider">Taarifa ya Matokeo</span>
                           <div className="bg-slate-800 p-4 rounded-2xl rounded-tl-none text-slate-100 text-[11px] leading-relaxed font-semibold">
                             {processed ? (
                               <>
                                 Ndugu Mzazi wa <strong className="text-cyan-400">{selectedStudent.name}</strong> ({selectedStudent.regNo}). Matokeo ya Mtihani: CIV:{calculateGrades(selectedStudent.civics).grade}, HIST:{calculateGrades(selectedStudent.history).grade}, GEO:{calculateGrades(selectedStudent.geography).grade}, KISW:{calculateGrades(selectedStudent.kiswahili).grade}, ENGL:{calculateGrades(selectedStudent.english).grade}, PHY:{calculateGrades(selectedStudent.physics).grade}, CHEM:{calculateGrades(selectedStudent.chemistry).grade}, BIO:{calculateGrades(selectedStudent.biology).grade}, MATH:{calculateGrades(selectedStudent.basicMath).grade}. Wastani: {selectedStudent.avg}%, Nafasi: {selectedStudent.rank} kati ya 2150. Division: {selectedStudent.division} (Pointi {selectedStudent.points}). Lupanulla Elimu Hub.
                               </>
                             ) : (
-                              <span className="text-slate-400 italic">Tafadhali chakata matokeo kwanza ili kuzalisha muundo wa SMS ya matokeo ya mzazi.</span>
+                              <span className="text-slate-400 italic">Tafadhali chakata matokeo kwanza ili kuzalisha muundo wa matokeo ya mzazi.</span>
                             )}
                           </div>
                         </div>
                       </div>
 
                       <div className="pt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 mt-4">
-                        <span className="text-[10px] text-slate-400 font-semibold">Gharama kwa SMS API: <strong className="text-white">TZS 15</strong></span>
+                        <span className="text-[10px] text-slate-400 font-semibold">Lupanulla Elimu Hub</span>
                         <div className="flex items-center gap-2">
                           <button 
                             onClick={() => {
                               const text = `Ndugu Mzazi wa ${selectedStudent.name} (${selectedStudent.regNo}). Matokeo ya Mtihani: CIV:${calculateGrades(selectedStudent.civics).grade}, HIST:${calculateGrades(selectedStudent.history).grade}, GEO:${calculateGrades(selectedStudent.geography).grade}, KISW:${calculateGrades(selectedStudent.kiswahili).grade}, ENGL:${calculateGrades(selectedStudent.english).grade}, PHY:${calculateGrades(selectedStudent.physics).grade}, CHEM:${calculateGrades(selectedStudent.chemistry).grade}, BIO:${calculateGrades(selectedStudent.biology).grade}, MATH:${calculateGrades(selectedStudent.basicMath).grade}. Wastani: ${selectedStudent.avg}%, Nafasi: ${selectedStudent.rank}. Division: ${selectedStudent.division} (Pointi ${selectedStudent.points}). Lupanulla Elimu Hub.`;
                               navigator.clipboard.writeText(text);
-                              alert('Ujumbe wa SMS umenakiliwa kwenye clipboard kikamilifu! Unaweza kuubandika (paste) na kutuma bure.');
+                              alert('Ujumbe wa matokeo umenakiliwa kwenye clipboard kikamilifu! Unaweza kuubandika na kutuma.');
                             }}
                             disabled={!processed}
                             className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 disabled:opacity-50 px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer"
@@ -905,13 +704,6 @@ export default function MwalimuHubView() {
                             className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer"
                           >
                             WhatsApp (Bure)
-                          </button>
-                          <button 
-                            onClick={() => handleSendSingleSMS(selectedStudent)}
-                            disabled={!processed}
-                            className="bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer"
-                          >
-                            Tuma Sasa
                           </button>
                         </div>
                       </div>
@@ -1461,7 +1253,7 @@ export default function MwalimuHubView() {
                     </div>
                     <div className="flex items-start gap-2.5">
                       <CheckCircle2 size={13} className="text-cyan-400 shrink-0 mt-0.5" />
-                      <span>Tutaunganisha SMS Gateway yenye jina la Shule yako (Sender ID) kupitia mitandao yote.</span>
+                      <span>Mfumo wa matokeo na ripoti bora za maendeleo ya wanafunzi shuleni kwako.</span>
                     </div>
                   </div>
 
@@ -1473,176 +1265,6 @@ export default function MwalimuHubView() {
                 </div>
               </div>
 
-            </div>
-          </div>
-        )}
-
-        {/* TAB 5: SMS GATEWAY CONFIGURATION */}
-        {activeTab === 'sms-config' && (
-          <div className="max-w-4xl mx-auto text-left">
-            <div className="bg-white p-6 sm:p-10 rounded-3xl border border-slate-200 shadow-lg space-y-8">
-              
-              <div className="flex items-center gap-4 border-b border-slate-100 pb-5">
-                <div className="bg-cyan-100 text-cyan-800 p-3 rounded-2xl">
-                  <Settings size={24} />
-                </div>
-                <div>
-                  <h3 className="font-display font-black text-slate-900 text-base uppercase tracking-tight">Usanidi wa SMS Gateway</h3>
-                  <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Sanidi watoa huduma wa SMS (Africa's Talking / Infobip) kwa ajili ya kutuma matokeo halisi kwa wazazi</p>
-                </div>
-              </div>
-
-              <form onSubmit={handleSaveSMSConfig} className="space-y-6">
-                
-                {/* Provider Selector */}
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Chagua Mtoa Huduma wa SMS (SMS Provider)</label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {[
-                      { id: 'simulation', name: 'Simulation (Majaribio)', desc: 'Hakuna gharama au funguo za API.' },
-                      { id: 'africastalking', name: "Africa's Talking", desc: 'Inafaa kwa Afrika Mashariki.' },
-                      { id: 'infobip', name: 'Infobip', desc: 'Mtoa huduma wa kimataifa.' }
-                    ].map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setSmsProvider(p.id as any)}
-                        className={`p-4 rounded-2xl border text-left cursor-pointer transition-all ${
-                          smsProvider === p.id 
-                            ? 'border-cyan-500 bg-cyan-500/5 ring-1 ring-cyan-500' 
-                            : 'border-slate-200 hover:bg-slate-50'
-                        }`}
-                      >
-                        <span className="text-xs font-black uppercase text-slate-900 block">{p.name}</span>
-                        <span className="text-[10px] text-slate-500 font-semibold block mt-1 leading-snug">{p.desc}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {smsConfigLoading ? (
-                  <div className="py-12 text-center text-xs font-bold text-slate-500 animate-pulse">
-                    Inasoma Mipangilio ya Seva...
-                  </div>
-                ) : (
-                  <>
-                    {smsProvider === 'simulation' && (
-                      <div className="p-5 bg-cyan-50 border border-cyan-200 rounded-2xl text-xs font-medium text-cyan-800 space-y-2 leading-relaxed">
-                        <h4 className="font-black uppercase tracking-wider text-cyan-900">Njia ya Majaribio (Simulation Mode)</h4>
-                        <p>Njia hii inaruhusu walimu wote kufanya majaribio ya kutuma matokeo kwa wazazi bila kuunganisha API key yoyote.</p>
-                        <p className="font-bold">Ujumbe wote utaandikwa kwenye "Live Log" ya mchakataji, kuonesha mchanganuo kamili wa jinsi mzazi angepokea SMS hiyo shuleni.</p>
-                      </div>
-                    )}
-
-                    {smsProvider === 'africastalking' && (
-                      <div className="space-y-4">
-                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-600 font-semibold">
-                          Usajili na API keys: Nenda kwenye <a href="https://africastalking.com" target="_blank" rel="noopener noreferrer" className="text-cyan-600 underline" onClick={(e) => e.stopPropagation()}>africastalking.com</a>, tengeneza akaunti, kisha nakili Username (kwa majaribio tumia "sandbox") na API Key yako hapa chini.
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Username</label>
-                            <input
-                              type="text"
-                              value={smsUsername}
-                              onChange={(e) => setSmsUsername(e.target.value)}
-                              placeholder="sandbox au Username yako"
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none text-slate-800 text-xs font-semibold focus:ring-1 focus:ring-cyan-500"
-                              required
-                            />
-                          </div>
-                          
-                          <div className="space-y-1">
-                            <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Sender ID / Shortcode (Optional)</label>
-                            <input
-                              type="text"
-                              value={smsSenderId}
-                              onChange={(e) => setSmsSenderId(e.target.value)}
-                              placeholder="Mfano: SHULE_YETU (Acha wazi kwa sandbox)"
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none text-slate-800 text-xs font-semibold focus:ring-1 focus:ring-cyan-500"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Africa's Talking API Key</label>
-                          <input
-                            type="password"
-                            value={smsApiKey}
-                            onChange={(e) => setSmsApiKey(e.target.value)}
-                            placeholder={hasApiKey ? "••••••••••••••••" : "Weka API Key yako ya Africa's Talking"}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none text-slate-800 text-xs font-semibold focus:ring-1 focus:ring-cyan-500"
-                            required
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {smsProvider === 'infobip' && (
-                      <div className="space-y-4">
-                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] text-slate-600 font-semibold">
-                          Nenda kwenye <a href="https://infobip.com" target="_blank" rel="noopener noreferrer" className="text-cyan-600 underline" onClick={(e) => e.stopPropagation()}>infobip.com</a> ili kusajili akaunti. Kisha andika API Key, Base URL ya akaunti yako, na Sender ID hapa chini.
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Infobip Base URL</label>
-                            <input
-                              type="text"
-                              value={smsInfobipBaseUrl}
-                              onChange={(e) => setSmsInfobipBaseUrl(e.target.value)}
-                              placeholder="Mfano: https://xyz.api.infobip.com"
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none text-slate-800 text-xs font-semibold focus:ring-1 focus:ring-cyan-500"
-                              required
-                            />
-                          </div>
-                          
-                          <div className="space-y-1">
-                            <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Sender ID / From Header</label>
-                            <input
-                              type="text"
-                              value={smsSenderId}
-                              onChange={(e) => setSmsSenderId(e.target.value)}
-                              placeholder="Mfano: InfoSMS au Jina la Shule"
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none text-slate-800 text-xs font-semibold focus:ring-1 focus:ring-cyan-500"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Infobip API Key</label>
-                          <input
-                            type="password"
-                            value={smsApiKey}
-                            onChange={(e) => setSmsApiKey(e.target.value)}
-                            placeholder={hasApiKey ? "••••••••••••••••" : "Weka API Key yako ya Infobip"}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 outline-none text-slate-800 text-xs font-semibold focus:ring-1 focus:ring-cyan-500"
-                            required
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${hasApiKey ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                        <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
-                          {hasApiKey ? 'API KEY IMEHIFADHIWA SIKU ZA NYUMA' : 'API KEY HAIJASANIDIWA BADO'}
-                        </span>
-                      </div>
-                      
-                      <button
-                        type="submit"
-                        disabled={smsConfigSaving}
-                        className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider py-3.5 px-6 rounded-xl shadow-lg shadow-cyan-500/20 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-                      >
-                        {smsConfigSaving ? 'Inahifadhi...' : 'Hifadhi Mipangilio'}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </form>
             </div>
           </div>
         )}
